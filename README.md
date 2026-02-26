@@ -1,8 +1,10 @@
-# Bitcoin Switch - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
+# ZapBox Extension - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
 
-Turn things on with bitcoin!
+> **Forked from [lnbits/bitcoinswitch_extension](https://github.com/lnbits/bitcoinswitch_extension)**  
+> Extended with NFC Bolt Card (NTAG424 DNA / LNURLW) support for the [ZapBox](https://github.com/AxelHamburch/ZapBox) device.
 
-[bitcoinswitch.lnbits.com](https://bitcoinswitch.lnbits.com)
-[Check out the tutorial (liking and subscribing is contributing to the project ❤️)](https://www.youtube.com/@makerbits7700)
+Turn things on with bitcoin – now with NFC Bolt Card support!
+
+[Check out the original project](https://bitcoinswitch.lnbits.com)
 [Join the support group](https://t.me/makerbits)
-`Author: Ben Arc` `Author: DNI`
+`Original authors: Ben Arc, DNI` `ZapBox extension: AxelHamburch`

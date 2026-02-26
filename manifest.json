@@ -1,9 +1,9 @@
 {
   "repos": [
     {
-      "id": "bitcoinswitch",
-      "organisation": "lnbits",
-      "repository": "bitcoinswitch_extension"
+      "id": "zapbox",
+      "organisation": "AxelHamburch",
+      "repository": "zapbox_extension"
     }
   ]
 }
