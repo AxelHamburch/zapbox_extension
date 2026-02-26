@@ -5,3 +5,5 @@ Extended with NFC Bolt Card (NTAG424 DNA / LNURLW) support for the [ZapBox](http
 **Basic NFC Bolt Card functions were taken from [pieterjm/partytap_extension](https://github.com/pieterjm/partytap_extension)**
 
 `Author: AxelHamburch`
+
+Extension manifest source: https://installer.zapbox.space/extensions.json
