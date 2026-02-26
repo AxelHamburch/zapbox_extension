@@ -1,6 +1,6 @@
 {
   "id": "zapbox",
-  "name": "ZapBox",
+  "name": "Zap⚡Box",
   "short_description": "Turn things on with bitcoin – NFC Bolt Card support for ZapBox",
   "tile": "/zapbox/static/image/icon.png",
   "version": "2.0.0",
