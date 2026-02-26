@@ -3,7 +3,7 @@
   "name": "ZapBox",
   "short_description": "Turn things on with bitcoin – NFC Bolt Card support for ZapBox",
   "tile": "/zapbox/static/image/icon.png",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "min_lnbits_version": "1.4.0",
   "contributors": [
     {
@@ -24,6 +24,11 @@
     {
       "name": "dni",
       "uri": "https://github.com/dni",
+      "role": "Developer"
+    },
+    {
+      "name": "AxelHamburch",
+      "uri": "https://github.com/AxelHamburch",
       "role": "Developer"
     }
   ],
