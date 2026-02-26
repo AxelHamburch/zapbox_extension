@@ -6,7 +6,7 @@
 
 Turn things on with bitcoin – now with NFC Bolt Card support!
 
-Check out the original project [bitcoinswitch.lnbits.com](https://bitcoinswitch.lnbits.com)<br>
-Join the Telegram support group [Makerbits](https://t.me/makerbits)<br>
-Check out the [bitcointaps.com]https://bitcointaps.com)<br>
-`Original authors: Ben Arc, DNI, pieterjm` `ZapBox extension: AxelHamburch`
+Check out [lnbits.com](https://lnbits.com) & Join the Telegram support group [Makerbits](https://t.me/makerbits)<br>
+`Original authors: Ben Arc, DNI, pieterjm` / `ZapBox extension: AxelHamburch`
+
+How it works
