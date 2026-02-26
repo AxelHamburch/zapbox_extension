@@ -9,7 +9,7 @@ from .models import (
     CreateBitcoinswitch,
 )
 
-db = Database("ext_bitcoinswitch")
+db = Database("ext_zapbox")
 
 
 async def create_bitcoinswitch(
@@ -26,19 +26,19 @@ async def create_bitcoinswitch(
         disabled=data.disabled,
         disposable=data.disposable,
     )
-    await db.insert("bitcoinswitch.switch", device)
+    await db.insert("zapbox.switch", device)
     return device
 
 
 async def update_bitcoinswitch(device: Bitcoinswitch) -> Bitcoinswitch:
     device.updated_at = datetime.now(timezone.utc)
-    await db.update("bitcoinswitch.switch", device)
+    await db.update("zapbox.switch", device)
     return device
 
 
 async def get_bitcoinswitch(bitcoinswitch_id: str) -> Bitcoinswitch | None:
     return await db.fetchone(
-        "SELECT * FROM bitcoinswitch.switch WHERE id = :id",
+        "SELECT * FROM zapbox.switch WHERE id = :id",
         {"id": bitcoinswitch_id},
         Bitcoinswitch,
     )
@@ -48,7 +48,7 @@ async def get_bitcoinswitches(wallet_ids: list[str]) -> list[Bitcoinswitch]:
     q = ",".join([f"'{w}'" for w in wallet_ids])
     return await db.fetchall(
         f"""
-        SELECT * FROM bitcoinswitch.switch WHERE wallet IN ({q})
+        SELECT * FROM zapbox.switch WHERE wallet IN ({q})
         ORDER BY id
         """,
         model=Bitcoinswitch,
@@ -57,7 +57,7 @@ async def get_bitcoinswitches(wallet_ids: list[str]) -> list[Bitcoinswitch]:
 
 async def delete_bitcoinswitch(bitcoinswitch_id: str) -> None:
     await db.execute(
-        "DELETE FROM bitcoinswitch.switch WHERE id = :id",
+        "DELETE FROM zapbox.switch WHERE id = :id",
         {"id": bitcoinswitch_id},
     )
 
@@ -76,7 +76,7 @@ async def create_switch_payment(
         pin=pin,
         sats=amount_msat,
     )
-    await db.insert("bitcoinswitch.payment", payment)
+    await db.insert("zapbox.payment", payment)
     return payment
 
 
@@ -84,13 +84,13 @@ async def update_switch_payment(
     switch_payment: BitcoinswitchPayment,
 ) -> BitcoinswitchPayment:
     switch_payment.updated_at = datetime.now(timezone.utc)
-    await db.update("bitcoinswitch.payment", switch_payment)
+    await db.update("zapbox.payment", switch_payment)
     return switch_payment
 
 
 async def delete_switch_payment(switch_payment_id: str) -> None:
     await db.execute(
-        "DELETE FROM bitcoinswitch.payment WHERE id = :id",
+        "DELETE FROM zapbox.payment WHERE id = :id",
         {"id": switch_payment_id},
     )
 
@@ -99,7 +99,7 @@ async def get_switch_payment(
     bitcoinswitchpayment_id: str,
 ) -> BitcoinswitchPayment | None:
     return await db.fetchone(
-        "SELECT * FROM bitcoinswitch.payment WHERE id = :id",
+        "SELECT * FROM zapbox.payment WHERE id = :id",
         {"id": bitcoinswitchpayment_id},
         BitcoinswitchPayment,
     )
@@ -109,7 +109,7 @@ async def get_switch_payment_by_payment_hash(
     payment_hash: str,
 ) -> BitcoinswitchPayment | None:
     return await db.fetchone(
-        "SELECT * FROM bitcoinswitch.payment WHERE payment_hash = :h",
+        "SELECT * FROM zapbox.payment WHERE payment_hash = :h",
         {"h": payment_hash},
     )
 
@@ -122,7 +122,7 @@ async def get_switch_payments(
     q = ",".join([f"'{w}'" for w in bitcoinswitch_ids])
     return await db.fetchall(
         f"""
-        SELECT * FROM bitcoinswitch.payment WHERE deviceid IN ({q})
+        SELECT * FROM zapbox.payment WHERE deviceid IN ({q})
         ORDER BY id
         """,
         model=BitcoinswitchPayment,

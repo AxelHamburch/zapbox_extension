@@ -1,14 +1,14 @@
 from lnbits.db import Database
 
-db = Database("ext_bitcoinswitch")
+db = Database("ext_zapbox")
 
 
 async def m001_initial(db):
     """
-    Initial bitcoinswitch table.
+    Initial zapbox table.
     """
     await db.execute(f"""
-        CREATE TABLE bitcoinswitch.switch (
+        CREATE TABLE zapbox.switch (
             id TEXT NOT NULL PRIMARY KEY,
             key TEXT NOT NULL,
             title TEXT NOT NULL,
@@ -20,7 +20,7 @@ async def m001_initial(db):
         );
     """)
     await db.execute(f"""
-        CREATE TABLE bitcoinswitch.payment (
+        CREATE TABLE zapbox.payment (
             id TEXT NOT NULL PRIMARY KEY,
             bitcoinswitch_id TEXT NOT NULL,
             payment_hash TEXT,
@@ -35,20 +35,20 @@ async def m001_initial(db):
 
 async def m002_add_password(db):
     await db.execute("""
-        ALTER TABLE bitcoinswitch.switch
+        ALTER TABLE zapbox.switch
         ADD COLUMN password TEXT;
         """)
 
 
 async def m003_disabled(db):
     await db.execute("""
-        ALTER TABLE bitcoinswitch.switch
+        ALTER TABLE zapbox.switch
         ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT FALSE;
         """)
 
 
 async def m004_disposable(db):
     await db.execute("""
-        ALTER TABLE bitcoinswitch.switch
+        ALTER TABLE zapbox.switch
         ADD COLUMN disposable BOOLEAN NOT NULL DEFAULT TRUE;
         """)
