@@ -4,7 +4,7 @@
       <q-card>
         <q-card-section>
           <q-btn unelevated color="primary" @click="formDialog.show = true"
-            >New Bitcoinswitch
+            >New ZapBox Switch
           </q-btn>
         </q-card-section>
       </q-card>
@@ -13,7 +13,7 @@
         <q-card-section>
           <div class="row items-center no-wrap q-mb-md">
             <div class="col">
-              <h5 class="text-subtitle1 q-my-none">Bitcoin Switches</h5>
+              <h5 class="text-subtitle1 q-my-none">ZapBox Switches</h5>
             </div>
 
             <div class="col-auto">
@@ -64,7 +64,7 @@
                     icon="edit"
                     color="blue"
                   >
-                    <q-tooltip>Edit Bitcoinswitch</q-tooltip>
+                    <q-tooltip>Edit ZapBox Switch</q-tooltip>
                   </q-btn>
                   <q-btn
                     flat
@@ -97,7 +97,7 @@
                     color="orange"
                   >
                     <q-tooltip
-                      >Open public LNURL Paylink Bitcoinswitch page.</q-tooltip
+                      >Open public LNURL Paylink ZapBox page.</q-tooltip
                     >
                   </q-btn>
                   <span style="flex-grow: 1"></span>
@@ -109,7 +109,7 @@
                     icon="cancel"
                     color="pink"
                   >
-                    <q-tooltip>Delete Bitcoinswitch</q-tooltip>
+                    <q-tooltip>Delete ZapBox Switch</q-tooltip>
                   </q-btn>
                 </q-td>
                 <q-td
@@ -132,7 +132,7 @@
       <q-card>
         <q-card-section>
           <h6 class="text-subtitle1 q-my-none">
-            LNbits Bitcoinswitch Extension
+            LNbits Zap&#9889;Box Extension
           </h6>
         </q-card-section>
         <q-separator></q-separator>
@@ -142,9 +142,23 @@
             Hardware:
             <a
               class="text-secondary"
-              href="https://github.com/lnbits/bitcoinSwitch"
+              href="https://github.com/AxelHamburch/ZapBox"
             >
-              https://github.com/lnbits/bitcoinSwitch</a
+              https://github.com/AxelHamburch/ZapBox</a
+            ><br />
+            Web installer:
+            <a
+              class="text-secondary"
+              href="https://installer.zapbox.space"
+            >
+              https://installer.zapbox.space</a
+            ><br />
+            Website:
+            <a
+              class="text-secondary"
+              href="https://zapbox.space"
+            >
+              https://zapbox.space</a
             ><br />
             <small>
               Created by,
@@ -157,11 +171,9 @@
               <a class="text-secondary" href="https://github.com/motorina0"
                 >Vlad Stan</a
               >,
-              <a class="text-secondary" href="https://github.com/dni">dni</a>
+              <a class="text-secondary" href="https://github.com/dni">dni</a>,
+              <a class="text-secondary" href="https://github.com/AxelHamburch">AxelHamburch</a>
             </small>
-          </p>
-          <p class="text-warning">
-            WARNING: updating the switch pin will change the QR code.
           </p>
         </q-card-section>
       </q-card>
