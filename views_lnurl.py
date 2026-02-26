@@ -50,7 +50,7 @@ async def lnurl_params(
     )
     # let the max be 100x the min if variable pricing is enabled
     max_sendable = price_msat * 100 if _switch.variable else price_msat
-    url = request.url_for("bitcoinswitch.lnurl_cb", switch_id=bitcoinswitch_id, pin=pin)
+    url = request.url_for("zapbox.lnurl_cb", switch_id=bitcoinswitch_id, pin=pin)
     try:
         callback_url = parse_obj_as(CallbackUrl, str(url))
     except InvalidLnurl:
@@ -66,7 +66,7 @@ async def lnurl_params(
     return res
 
 
-@bitcoinswitch_lnurl_router.get("/cb/{switch_id}/{pin}", name="bitcoinswitch.lnurl_cb")
+@bitcoinswitch_lnurl_router.get("/cb/{switch_id}/{pin}", name="zapbox.lnurl_cb")
 async def lnurl_callback(
     switch_id: str,
     pin: int,

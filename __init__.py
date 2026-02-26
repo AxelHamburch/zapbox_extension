@@ -9,23 +9,23 @@ from .views import bitcoinswitch_generic_router
 from .views_api import bitcoinswitch_api_router
 from .views_lnurl import bitcoinswitch_lnurl_router
 
-bitcoinswitch_ext: APIRouter = APIRouter(
-    prefix="/bitcoinswitch", tags=["bitcoinswitch"]
+zapbox_ext: APIRouter = APIRouter(
+    prefix="/zapbox", tags=["zapbox"]
 )
-bitcoinswitch_ext.include_router(bitcoinswitch_generic_router)
-bitcoinswitch_ext.include_router(bitcoinswitch_api_router)
-bitcoinswitch_ext.include_router(bitcoinswitch_lnurl_router)
+zapbox_ext.include_router(bitcoinswitch_generic_router)
+zapbox_ext.include_router(bitcoinswitch_api_router)
+zapbox_ext.include_router(bitcoinswitch_lnurl_router)
 
-bitcoinswitch_static_files = [
+zapbox_static_files = [
     {
-        "path": "/bitcoinswitch/static",
-        "name": "bitcoinswitch_static",
+        "path": "/zapbox/static",
+        "name": "zapbox_static",
     }
 ]
 scheduled_tasks: list[asyncio.Task] = []
 
 
-def bitcoinswitch_stop():
+def zapbox_stop():
     for task in scheduled_tasks:
         try:
             task.cancel()
@@ -33,17 +33,17 @@ def bitcoinswitch_stop():
             logger.warning(ex)
 
 
-def bitcoinswitch_start():
+def zapbox_start():
     from lnbits.tasks import create_permanent_unique_task
 
-    task = create_permanent_unique_task("ext_bitcoinswitch", wait_for_paid_invoices)
+    task = create_permanent_unique_task("ext_zapbox", wait_for_paid_invoices)
     scheduled_tasks.append(task)
 
 
 __all__ = [
-    "bitcoinswitch_ext",
-    "bitcoinswitch_start",
-    "bitcoinswitch_static_files",
-    "bitcoinswitch_stop",
+    "zapbox_ext",
+    "zapbox_start",
+    "zapbox_static_files",
+    "zapbox_stop",
     "db",
 ]
