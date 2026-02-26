@@ -4,7 +4,7 @@
       <q-card>
         <q-card-section>
           <q-btn unelevated color="primary" @click="formDialog.show = true"
-            >New ZapBox Switch
+            >New ZapBox Instance
           </q-btn>
         </q-card-section>
       </q-card>
@@ -13,7 +13,7 @@
         <q-card-section>
           <div class="row items-center no-wrap q-mb-md">
             <div class="col">
-              <h5 class="text-subtitle1 q-my-none">ZapBox Switches</h5>
+              <h5 class="text-subtitle1 q-my-none">ZapBox Instances</h5>
             </div>
 
             <div class="col-auto">
@@ -139,6 +139,13 @@
         <q-card-section>
           <p>
             Turn on and off things with bitcoin!<br />
+            Extension:
+            <a
+              class="text-secondary"
+              href="https://github.com/AxelHamburch/zapbox_extension"
+            >
+              https://github.com/AxelHamburch/zapbox_extension</a
+            ><br />
             Hardware:
             <a
               class="text-secondary"
@@ -337,7 +344,7 @@
               color="primary"
               :disable="formDialog.data.title == ''"
               type="submit"
-              >Update Bitcoin Switch</q-btn
+              >Update ZapBox Instance</q-btn
             >
             <q-btn
               v-else
@@ -345,7 +352,7 @@
               color="primary"
               :disable="formDialog.data.title == ''"
               type="submit"
-              >Create Bitcoin Switch</q-btn
+              >Create ZapBox Instance</q-btn
             >
             <q-btn @click="cancelFormDialog" flat color="grey" class="q-ml-auto"
               >Cancel</q-btn
