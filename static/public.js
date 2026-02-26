@@ -1,5 +1,5 @@
-window.PageBitcoinswitchPublic = {
-  template: '#page-bitcoinswitch-public',
+window.PageZapboxPublic = {
+  template: '#page-zapbox-public',
   data() {
     return {
       bitcoinswitch: null,
@@ -16,9 +16,9 @@ window.PageBitcoinswitchPublic = {
   },
   created() {
     const bsId = this.$route.params.id
-    this.url = `${window.location.origin}/bitcoinswitch/api/v1/lnurl/${bsId}`
+    this.url = `${window.location.origin}/zapbox/api/v1/lnurl/${bsId}`
     LNbits.api
-      .request('GET', `/bitcoinswitch/api/v1/public/${bsId}`)
+      .request('GET', `/zapbox/api/v1/public/${bsId}`)
       .catch(LNbits.utils.notifyApiError)
       .then(res => {
         this.bitcoinswitch = res.data

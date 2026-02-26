@@ -1,4 +1,4 @@
-<template id="page-bitcoinswitch-public">
+<template id="page-zapbox-public">
   <div class="row q-col-gutter-md justify-center">
     <div class="col-12 col-sm-6 col-md-5 col-lg-4">
       <q-card class="q-pa-lg">

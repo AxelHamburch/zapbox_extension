@@ -1,9 +1,9 @@
-window.PageBitcoinswitch = {
-  template: '#page-bitcoinswitch',
+window.PageZapbox = {
+  template: '#page-zapbox',
   data() {
     return {
-      url: window.location.origin + '/bitcoinswitch/api/v1/lnurl',
-      apiUrl: window.location.origin + '/bitcoinswitch/api/v1',
+      url: window.location.origin + '/zapbox/api/v1/lnurl',
+      apiUrl: window.location.origin + '/zapbox/api/v1',
       activeUrl: 0,
       activePin: 0,
       lnurl: '',
@@ -103,7 +103,7 @@ window.PageBitcoinswitch = {
       }
     },
     openPublicLink(id) {
-      window.open(`/bitcoinswitch/public/${id}`, '_blank')
+      window.open(`/zapbox/public/${id}`, '_blank')
     },
     switchLabel(_switch) {
       const label = _switch.label !== null ? _switch.label : 'Switch '
