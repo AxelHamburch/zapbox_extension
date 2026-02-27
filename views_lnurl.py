@@ -1,4 +1,5 @@
 import json
+import math
 
 from fastapi import APIRouter, Query, Request
 from lnbits.core.services import create_invoice, websocket_manager
@@ -48,6 +49,14 @@ async def lnurl_params(
         )
         * 1000
     )
+    if price_msat < 1000:
+        return LnurlErrorResponse(
+            reason=(
+                f"Configured amount ({_switch.amount} {switch.currency}) is less than "
+                f"1 satoshi ({price_msat} msat). Please edit the ZapBox instance and "
+                f"set a valid amount (e.g. use currency 'EUR' instead of 'sat' for fiat amounts)."
+            )
+        )
     # let the max be 100x the min if variable pricing is enabled
     max_sendable = price_msat * 100 if _switch.variable else price_msat
     url = request.url_for("zapbox.lnurl_cb", switch_id=bitcoinswitch_id, pin=pin)
@@ -98,7 +107,7 @@ async def lnurl_callback(
 
     payment = await create_invoice(
         wallet_id=switch.wallet,
-        amount=int(amount / 1000),
+        amount=math.ceil(amount / 1000),
         unhashed_description=metadata.encode(),
         memo=memo,
         extra={
