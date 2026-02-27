@@ -53,8 +53,7 @@ async def lnurl_params(
         return LnurlErrorResponse(
             reason=(
                 f"Configured amount ({_switch.amount} {switch.currency}) is less than "
-                f"1 satoshi ({price_msat} msat). Please edit the ZapBox instance and "
-                f"set a valid amount (e.g. use currency 'EUR' instead of 'sat' for fiat amounts)."
+                f"1 satoshi — please use whole numbers for satoshis or fiat currency."
             )
         )
     # let the max be 100x the min if variable pricing is enabled
