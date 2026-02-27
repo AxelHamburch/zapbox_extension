@@ -111,6 +111,7 @@ async def get_switch_payment_by_payment_hash(
     return await db.fetchone(
         "SELECT * FROM zapbox.payment WHERE payment_hash = :h",
         {"h": payment_hash},
+        BitcoinswitchPayment,
     )
 
 

@@ -112,7 +112,7 @@ async def api_nfc_lnurlw(
         amount=sats,
         memo=f"{switch.title} (NFC pin: {pin})",
         unhashed_description=metadata.encode(),
-        extra={"tag": "Switch", "pin": pin, "comment": None},
+        extra={"tag": "Switch", "pin": pin, "comment": None, "bitcoinswitch_id": switch.id},
     )
     await create_switch_payment(
         payment_hash=payment.payment_hash,

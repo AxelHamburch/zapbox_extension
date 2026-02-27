@@ -113,6 +113,7 @@ async def lnurl_callback(
             "tag": "Switch",
             "pin": pin,
             "comment": comment,
+            "bitcoinswitch_id": switch_id,
         },
     )
 
