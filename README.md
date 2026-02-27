@@ -9,3 +9,5 @@ Turn things on with bitcoin – now with NFC Bolt Card support!
 Check out [lnbits.com](https://lnbits.com) & join the Telegram support group [Makerbits](https://t.me/makerbits)
 
 `Original authors: Ben Arc, DNI, pieterjm` / `ZapBox extension: AxelHamburch`
+
+Extension manifest source for LNbits: [https://installer.zapbox.space/extensions.json](https://installer.zapbox.space/extensions.json)
