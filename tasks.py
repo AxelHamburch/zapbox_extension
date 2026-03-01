@@ -21,7 +21,7 @@ async def wait_for_paid_invoices():
 
 
 async def on_invoice_paid(payment: Payment) -> None:
-    if payment.extra.get("tag") != "Switch":
+    if payment.extra.get("tag") != "ZapBox":
         return
 
     switch_payment = await get_switch_payment_by_payment_hash(payment.payment_hash)

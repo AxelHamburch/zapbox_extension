@@ -110,7 +110,7 @@ async def lnurl_callback(
         unhashed_description=metadata.encode(),
         memo=memo,
         extra={
-            "tag": "Switch",
+            "tag": "ZapBox",
             "pin": pin,
             "comment": comment,
             "bitcoinswitch_id": switch_id,
