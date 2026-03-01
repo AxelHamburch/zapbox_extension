@@ -27,8 +27,15 @@ async def on_invoice_paid(payment: Payment) -> None:
     switch_payment = await get_switch_payment_by_payment_hash(payment.payment_hash)
 
     # Race condition guard: on fast Bolt Card payments the invoice can settle before
-    # the DB transaction from create_switch_payment commits. Fall back to the
-    # bitcoinswitch_id and pin stored directly in the invoice extra fields.
+    # the DB transaction from create_switch_payment commits. Retry a few times before
+    # falling back to the bitcoinswitch_id and pin stored in the invoice extra fields.
+    if not switch_payment:
+        for delay in (0.1, 0.3, 0.6):
+            await asyncio.sleep(delay)
+            switch_payment = await get_switch_payment_by_payment_hash(payment.payment_hash)
+            if switch_payment:
+                break
+
     if not switch_payment:
         bitcoinswitch_id = payment.extra.get("bitcoinswitch_id")
         pin = payment.extra.get("pin")
