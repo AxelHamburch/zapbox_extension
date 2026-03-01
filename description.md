@@ -7,3 +7,4 @@ Extended with NFC Bolt Card (NTAG424 DNA / LNURLW) support for the [ZapBox](http
 `Author: AxelHamburch`
 
 Extension manifest source: https://installer.zapbox.space/extensions.json
+Web installer: https://installer.zapbox.space/

@@ -139,12 +139,26 @@
         <q-card-section>
           <p>
             Turn on and off things with bitcoin!<br />
-            Extension:
+            Web installer:
             <a
               class="text-secondary"
-              href="https://github.com/AxelHamburch/zapbox_extension"
+              href="https://installer.zapbox.space"
             >
-              https://github.com/AxelHamburch/zapbox_extension</a
+              https://installer.zapbox.space</a
+            ><br />
+            Main page:
+            <a
+              class="text-secondary"
+              href="https://zapbox.space"
+            >
+              https://zapbox.space</a
+            ><br />
+            Documentation:
+            <a
+              class="text-secondary"
+              href="https://ereignishorizont.xyz/en/zapbox-en/"
+            >
+              https://ereignishorizont.xyz/zapbox</a
             ><br />
             Hardware:
             <a
@@ -153,19 +167,12 @@
             >
               https://github.com/AxelHamburch/ZapBox</a
             ><br />
-            Web installer:
+            Extension:
             <a
               class="text-secondary"
-              href="https://installer.zapbox.space"
+              href="https://github.com/AxelHamburch/zapbox_extension"
             >
-              https://installer.zapbox.space</a
-            ><br />
-            Website:
-            <a
-              class="text-secondary"
-              href="https://zapbox.space"
-            >
-              https://zapbox.space</a
+              https://github.com/AxelHamburch/zapbox_extension</a
             ><br />
             <small>
               Created by,
