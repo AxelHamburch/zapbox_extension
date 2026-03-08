@@ -10,6 +10,15 @@ The extension manifest URL for LNbits:
 https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/extensions.json
 ```
 
+> **⚠️ CRITICAL: Tag vs. main must be different commits!**
+> `extensions.json` is part of this repo. The tag ZIP includes whatever `extensions.json` was at tag time. To avoid a chicken-and-egg hash problem:
+> 1. Tag is placed on the **code commit** (before the hash is known)
+> 2. SHA256 is calculated from the tag's ZIP
+> 3. Hash is committed to `extensions.json` on **main only** — the tag is **never moved**
+>
+> LNbits reads `extensions.json` from `main` (correct hash) and downloads the ZIP from the tag (matching hash).
+```
+
 Every time `zapbox_extension` is changed, the hash in `extensions.json` must be recalculated.
 
 ---
@@ -63,6 +72,7 @@ git push
 ```
 
 > **Note:** After pushing, the updated `extensions.json` is immediately available via GitHub raw URL – no SFTP upload needed.
+> **⚠️ Do NOT move the tag after this step!** The tag must stay on the code commit from step 2.
 
 ### 6. Reinstall the extension in LNbits
 
@@ -149,6 +159,8 @@ git add extensions.json config.json
 git commit -m "release: v2.1.0 – update extensions.json"
 git push
 ```
+
+> **⚠️ Do NOT move the tag after this step!** The tag must stay on the code commit from step 3.
 
 ### 7. Reinstall the extension in LNbits
 
