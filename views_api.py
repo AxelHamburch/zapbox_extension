@@ -123,7 +123,7 @@ async def api_nfc_lnurlw(
 
     # Step 2: Resolve LNURLW → k1 + callback
     lnurlw = data.lnurlw
-    if not lnurlw.startswith("lnurlw://"):
+    if not lnurlw.lower().startswith("lnurlw://"):
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid LNURLW format.")
 
     resolve_url = "https://" + lnurlw[9:]

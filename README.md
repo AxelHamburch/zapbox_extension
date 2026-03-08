@@ -10,4 +10,4 @@ Check out [lnbits.com](https://lnbits.com) & join the Telegram support group [Ma
 
 `Original authors: Ben Arc, DNI, pieterjm` / `ZapBox extension: AxelHamburch`
 
-Extension manifest source for LNbits: [https://installer.zapbox.space/extensions.json](https://installer.zapbox.space/extensions.json)
+Extension manifest source for LNbits: [https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/extensions.json](https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/extensions.json)
