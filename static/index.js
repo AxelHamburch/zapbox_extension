@@ -9,8 +9,8 @@ window.PageZapbox = {
       lnurl: '',
       filter: '',
       currency: 'sat',
-      bitcoinswitches: [],
-      bitcoinswitchTable: {
+      zapboxes: [],
+      zapboxTable: {
         columns: [
           {
             name: 'title',
@@ -115,12 +115,12 @@ window.PageZapbox = {
       )
       this.activeUrl = `${this.url}/${this.qrCodeDialog.data.id}?pin=${_switch.pin}`
     },
-    openQrCodeDialog(bitcoinswitchId) {
-      const bitcoinswitch = _.findWhere(this.bitcoinswitches, {
-        id: bitcoinswitchId
+    openQrCodeDialog(zapboxId) {
+      const zapbox = _.findWhere(this.zapboxes, {
+        id: zapboxId
       })
-      this.qrCodeDialog.data = _.clone(bitcoinswitch)
-      this.activePin = bitcoinswitch.switches[0].pin
+      this.qrCodeDialog.data = _.clone(zapbox)
+      this.activePin = zapbox.switches[0].pin
       this.qrCodeDialog.show = true
     },
     addSwitch() {
@@ -145,24 +145,24 @@ window.PageZapbox = {
     },
     sendFormData() {
       if (this.formDialog.data.id) {
-        this.updateBitcoinswitch()
+        this.updateZapBox()
       } else {
-        this.createBitcoinswitch()
+        this.createZapBox()
       }
     },
 
-    createBitcoinswitch() {
+    createZapBox() {
       LNbits.api
         .request('POST', this.apiUrl, null, this.formDialog.data)
         .then(response => {
-          this.bitcoinswitches.push(response.data)
+          this.zapboxes.push(response.data)
           this.closeFormDialog()
         })
         .catch(error => {
           LNbits.utils.notifyApiError(error)
         })
     },
-    updateBitcoinswitch() {
+    updateZapBox() {
       LNbits.api
         .request(
           'PUT',
@@ -171,38 +171,38 @@ window.PageZapbox = {
           this.formDialog.data
         )
         .then(response => {
-          const index = this.bitcoinswitches.findIndex(
+          const index = this.zapboxes.findIndex(
             obj => obj.id === response.data.id
           )
-          this.bitcoinswitches[index] = response.data
+          this.zapboxes[index] = response.data
           this.$q.notify({
             type: 'success',
-            message: 'Bitcoinswitch updated successfully!'
+            message: 'ZapBox updated successfully!'
           })
           this.closeFormDialog()
         })
         .catch(LNbits.utils.notifyApiError)
     },
-    getBitcoinswitches() {
+    getZapBoxes() {
       LNbits.api
         .request('GET', this.apiUrl)
         .then(response => {
           if (response.data.length > 0) {
-            this.bitcoinswitches = response.data
+            this.zapboxes = response.data
           }
         })
         .catch(LNbits.utils.notifyApiError)
     },
-    deleteBitcoinswitch(bitcoinswitchId) {
+    deleteZapBox(zapboxId) {
       LNbits.utils
         .confirmDialog('Are you sure you want to delete this pay link?')
         .onOk(() => {
           LNbits.api
-            .request('DELETE', this.apiUrl + '/' + bitcoinswitchId)
+            .request('DELETE', this.apiUrl + '/' + zapboxId)
             .then(() => {
-              this.bitcoinswitches = _.reject(
-                this.bitcoinswitches,
-                obj => obj.id === bitcoinswitchId
+              this.zapboxes = _.reject(
+                this.zapboxes,
+                obj => obj.id === zapboxId
               )
             })
             .catch(LNbits.utils.notifyApiError)
@@ -220,25 +220,25 @@ window.PageZapbox = {
         })
         .catch(LNbits.utils.notifyApiError)
     },
-    openUpdateBitcoinswitch(bitcoinswitchId) {
-      const bitcoinswitch = _.findWhere(this.bitcoinswitches, {
-        id: bitcoinswitchId
+    openUpdateZapBox(zapboxId) {
+      const zapbox = _.findWhere(this.zapboxes, {
+        id: zapboxId
       })
-      this.formDialog.data = _.clone(bitcoinswitch)
+      this.formDialog.data = _.clone(zapbox)
       this.formDialog.show = true
     },
-    copyDeviceString(bitcoinswitchId) {
-      const loc = `wss://${window.location.host}/api/v1/ws/${bitcoinswitchId}`
+    copyDeviceString(zapboxId) {
+      const loc = `wss://${window.location.host}/api/v1/ws/${zapboxId}`
       this.utils.copyText(loc, 'Device string copied to clipboard!')
     },
     exportCSV() {
       LNbits.utils.exportCSV(
-        this.bitcoinswitchTable.columns,
-        this.bitcoinswitches
+        this.zapboxTable.columns,
+        this.zapboxes
       )
     }
   },
   created() {
-    this.getBitcoinswitches()
+    this.getZapBoxes()
   }
 }

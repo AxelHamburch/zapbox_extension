@@ -4,20 +4,20 @@ from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
 from .models import (
-    Bitcoinswitch,
-    BitcoinswitchPayment,
-    CreateBitcoinswitch,
+    ZapBox,
+    ZapBoxPayment,
+    CreateZapBox,
 )
 
 db = Database("ext_zapbox")
 
 
-async def create_bitcoinswitch(
-    data: CreateBitcoinswitch,
-) -> Bitcoinswitch:
-    bitcoinswitch_id = urlsafe_short_hash()
-    device = Bitcoinswitch(
-        id=bitcoinswitch_id,
+async def create_zapbox(
+    data: CreateZapBox,
+) -> ZapBox:
+    zapbox_id = urlsafe_short_hash()
+    device = ZapBox(
+        id=zapbox_id,
         title=data.title,
         wallet=data.wallet,
         currency=data.currency,
@@ -30,35 +30,35 @@ async def create_bitcoinswitch(
     return device
 
 
-async def update_bitcoinswitch(device: Bitcoinswitch) -> Bitcoinswitch:
+async def update_zapbox(device: ZapBox) -> ZapBox:
     device.updated_at = datetime.now(timezone.utc)
     await db.update("zapbox.switch", device)
     return device
 
 
-async def get_bitcoinswitch(bitcoinswitch_id: str) -> Bitcoinswitch | None:
+async def get_zapbox(zapbox_id: str) -> ZapBox | None:
     return await db.fetchone(
         "SELECT * FROM zapbox.switch WHERE id = :id",
-        {"id": bitcoinswitch_id},
-        Bitcoinswitch,
+        {"id": zapbox_id},
+        ZapBox,
     )
 
 
-async def get_bitcoinswitches(wallet_ids: list[str]) -> list[Bitcoinswitch]:
+async def get_zapboxes(wallet_ids: list[str]) -> list[ZapBox]:
     q = ",".join([f"'{w}'" for w in wallet_ids])
     return await db.fetchall(
         f"""
         SELECT * FROM zapbox.switch WHERE wallet IN ({q})
         ORDER BY id
         """,
-        model=Bitcoinswitch,
+        model=ZapBox,
     )
 
 
-async def delete_bitcoinswitch(bitcoinswitch_id: str) -> None:
+async def delete_zapbox(zapbox_id: str) -> None:
     await db.execute(
         "DELETE FROM zapbox.switch WHERE id = :id",
-        {"id": bitcoinswitch_id},
+        {"id": zapbox_id},
     )
 
 
@@ -67,12 +67,12 @@ async def create_switch_payment(
     switch_id: str,
     pin: int,
     amount_msat: int = 0,
-) -> BitcoinswitchPayment:
+) -> ZapBoxPayment:
     payment_id = urlsafe_short_hash()
-    payment = BitcoinswitchPayment(
+    payment = ZapBoxPayment(
         id=payment_id,
         payment_hash=payment_hash,
-        bitcoinswitch_id=switch_id,
+        zapbox_id=switch_id,
         pin=pin,
         sats=amount_msat,
     )
@@ -81,8 +81,8 @@ async def create_switch_payment(
 
 
 async def update_switch_payment(
-    switch_payment: BitcoinswitchPayment,
-) -> BitcoinswitchPayment:
+    switch_payment: ZapBoxPayment,
+) -> ZapBoxPayment:
     switch_payment.updated_at = datetime.now(timezone.utc)
     await db.update("zapbox.payment", switch_payment)
     return switch_payment
@@ -96,35 +96,35 @@ async def delete_switch_payment(switch_payment_id: str) -> None:
 
 
 async def get_switch_payment(
-    bitcoinswitchpayment_id: str,
-) -> BitcoinswitchPayment | None:
+    zapbox_payment_id: str,
+) -> ZapBoxPayment | None:
     return await db.fetchone(
         "SELECT * FROM zapbox.payment WHERE id = :id",
-        {"id": bitcoinswitchpayment_id},
-        BitcoinswitchPayment,
+        {"id": zapbox_payment_id},
+        ZapBoxPayment,
     )
 
 
 async def get_switch_payment_by_payment_hash(
     payment_hash: str,
-) -> BitcoinswitchPayment | None:
+) -> ZapBoxPayment | None:
     return await db.fetchone(
         "SELECT * FROM zapbox.payment WHERE payment_hash = :h",
         {"h": payment_hash},
-        BitcoinswitchPayment,
+        ZapBoxPayment,
     )
 
 
 async def get_switch_payments(
-    bitcoinswitch_ids: list[str],
-) -> list[BitcoinswitchPayment]:
-    if len(bitcoinswitch_ids) == 0:
+    zapbox_ids: list[str],
+) -> list[ZapBoxPayment]:
+    if len(zapbox_ids) == 0:
         return []
-    q = ",".join([f"'{w}'" for w in bitcoinswitch_ids])
+    q = ",".join([f"'{w}'" for w in zapbox_ids])
     return await db.fetchall(
         f"""
         SELECT * FROM zapbox.payment WHERE deviceid IN ({q})
         ORDER BY id
         """,
-        model=BitcoinswitchPayment,
+        model=ZapBoxPayment,
     )

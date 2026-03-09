@@ -12,7 +12,7 @@ class Switch(BaseModel):
     label: str | None = None
 
 
-class CreateBitcoinswitch(BaseModel):
+class CreateZapBox(BaseModel):
     title: str
     wallet: str
     currency: str
@@ -22,7 +22,7 @@ class CreateBitcoinswitch(BaseModel):
     disposable: bool = True
 
 
-class Bitcoinswitch(BaseModel):
+class ZapBox(BaseModel):
     id: str
     title: str
     wallet: str
@@ -39,14 +39,14 @@ class Bitcoinswitch(BaseModel):
     key: str = ""
 
 
-class BitcoinswitchPublic(BaseModel):
+class ZapBoxPublic(BaseModel):
     title: str
     switches: list[Switch]
 
 
-class BitcoinswitchPayment(BaseModel):
+class ZapBoxPayment(BaseModel):
     id: str
-    bitcoinswitch_id: str
+    zapbox_id: str
     payment_hash: str
     pin: int
     sats: int

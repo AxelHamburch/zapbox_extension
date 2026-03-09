@@ -13,46 +13,46 @@ from lnurl.types import LnurlPayMetadata
 from pydantic import BaseModel
 
 from .crud import (
-    create_bitcoinswitch,
+    create_zapbox,
     create_switch_payment,
-    delete_bitcoinswitch,
-    get_bitcoinswitch,
-    get_bitcoinswitches,
-    update_bitcoinswitch,
+    delete_zapbox,
+    get_zapbox,
+    get_zapboxes,
+    update_zapbox,
 )
-from .models import Bitcoinswitch, BitcoinswitchPublic, CreateBitcoinswitch
+from .models import ZapBox, ZapBoxPublic, CreateZapBox
 
 
 class NfcLnurlwRequest(BaseModel):
     lnurlw: str
 
-bitcoinswitch_api_router = APIRouter(prefix="/api/v1")
+zapbox_api_router = APIRouter(prefix="/api/v1")
 
 
-@bitcoinswitch_api_router.post("")
-async def api_bitcoinswitch_create(
-    data: CreateBitcoinswitch, user: User = Depends(check_user_exists)
-) -> Bitcoinswitch:
+@zapbox_api_router.post("")
+async def api_zapbox_create(
+    data: CreateZapBox, user: User = Depends(check_user_exists)
+) -> ZapBox:
     if data.wallet not in user.wallet_ids:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
             detail=(
-                "You do not have permission to create a bitcoinswitch for this wallet."
+                "You do not have permission to create a ZapBox for this wallet."
             ),
         )
-    return await create_bitcoinswitch(data)
+    return await create_zapbox(data)
 
 
-@bitcoinswitch_api_router.put("/trigger/{switch_id}/{pin}")
-async def api_bitcoinswitch_trigger(
+@zapbox_api_router.put("/trigger/{switch_id}/{pin}")
+async def api_zapbox_trigger(
     switch_id: str,
     pin: int,
     user: User = Depends(check_user_exists),
 ) -> None:
-    switch = await get_bitcoinswitch(switch_id)
+    switch = await get_zapbox(switch_id)
     if not switch:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Bitcoinswitch does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist."
         )
     _switch = next((s for s in switch.switches if s.pin == pin), None)
     if not _switch:
@@ -68,7 +68,7 @@ async def api_bitcoinswitch_trigger(
     await websocket_updater(switch.id, f"{pin}-{_switch.duration}")
 
 
-@bitcoinswitch_api_router.post("/nfc/{device_id}")
+@zapbox_api_router.post("/nfc/{device_id}")
 async def api_nfc_lnurlw(
     device_id: str,
     pin: int = Query(...),
@@ -82,7 +82,7 @@ async def api_nfc_lnurlw(
     3. Submits the invoice to the LNURLW callback so the Bolt Card wallet pays.
     4. Invoice settled event is handled by tasks.py which triggers the relay.
     """
-    switch = await get_bitcoinswitch(device_id)
+    switch = await get_zapbox(device_id)
     if not switch:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Device not found.")
 
@@ -112,7 +112,7 @@ async def api_nfc_lnurlw(
         amount=sats,
         memo=f"{switch.title} (NFC pin: {pin})",
         unhashed_description=metadata.encode(),
-        extra={"tag": "ZapBox", "pin": pin, "comment": None, "bitcoinswitch_id": switch.id},
+        extra={"tag": "ZapBox", "pin": pin, "comment": None, "zapbox_id": switch.id},
     )
     await create_switch_payment(
         payment_hash=payment.payment_hash,
@@ -171,80 +171,80 @@ async def api_nfc_lnurlw(
     return {"status": "OK", "payment_hash": payment.payment_hash}
 
 
-@bitcoinswitch_api_router.put("/{bitcoinswitch_id}")
-async def api_bitcoinswitch_update(
-    data: CreateBitcoinswitch,
-    bitcoinswitch_id: str,
+@zapbox_api_router.put("/{zapbox_id}")
+async def api_zapbox_update(
+    data: CreateZapBox,
+    zapbox_id: str,
     user: User = Depends(check_user_exists),
-) -> Bitcoinswitch:
-    bitcoinswitch = await get_bitcoinswitch(bitcoinswitch_id)
-    if not bitcoinswitch:
+) -> ZapBox:
+    zapbox = await get_zapbox(zapbox_id)
+    if not zapbox:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="bitcoinswitch does not exist"
+            status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist"
         )
     if data.wallet not in user.wallet_ids:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
-            detail="You do not have permission to update this bitcoinswitch.",
+            detail="You do not have permission to update this ZapBox.",
         )
 
     for k, v in data.dict().items():
         if v is not None:
-            setattr(bitcoinswitch, k, v)
+            setattr(zapbox, k, v)
 
-    bitcoinswitch.switches = data.switches
-    return await update_bitcoinswitch(bitcoinswitch)
+    zapbox.switches = data.switches
+    return await update_zapbox(zapbox)
 
 
-@bitcoinswitch_api_router.get(
-    "/public/{bitcoinswitch_id}", response_model=BitcoinswitchPublic
+@zapbox_api_router.get(
+    "/public/{zapbox_id}", response_model=ZapBoxPublic
 )
-async def api_bitcoinswitch_get_public(bitcoinswitch_id: str) -> Bitcoinswitch:
-    bitcoinswitch = await get_bitcoinswitch(bitcoinswitch_id)
-    if not bitcoinswitch:
+async def api_zapbox_get_public(zapbox_id: str) -> ZapBox:
+    zapbox = await get_zapbox(zapbox_id)
+    if not zapbox:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Bitcoinswitch does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist."
         )
-    return bitcoinswitch
+    return zapbox
 
 
-@bitcoinswitch_api_router.get("")
-async def api_bitcoinswitchs_retrieve(
+@zapbox_api_router.get("")
+async def api_zapboxes_retrieve(
     user: User = Depends(check_user_exists),
-) -> list[Bitcoinswitch]:
-    return await get_bitcoinswitches(user.wallet_ids)
+) -> list[ZapBox]:
+    return await get_zapboxes(user.wallet_ids)
 
 
-@bitcoinswitch_api_router.get("/{bitcoinswitch_id}")
-async def api_bitcoinswitch_retrieve(
-    bitcoinswitch_id: str, user: User = Depends(check_user_exists)
-) -> Bitcoinswitch:
-    bitcoinswitch = await get_bitcoinswitch(bitcoinswitch_id)
-    if not bitcoinswitch:
+@zapbox_api_router.get("/{zapbox_id}")
+async def api_zapbox_retrieve(
+    zapbox_id: str, user: User = Depends(check_user_exists)
+) -> ZapBox:
+    zapbox = await get_zapbox(zapbox_id)
+    if not zapbox:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Bitcoinswitch does not exist"
+            status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist"
         )
-    if bitcoinswitch.wallet not in user.wallet_ids:
+    if zapbox.wallet not in user.wallet_ids:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
-            detail="You do not have permission to access this bitcoinswitch.",
+            detail="You do not have permission to access this ZapBox.",
         )
-    return bitcoinswitch
+    return zapbox
 
 
-@bitcoinswitch_api_router.delete("/{bitcoinswitch_id}")
-async def api_bitcoinswitch_delete(
-    bitcoinswitch_id: str,
+@zapbox_api_router.delete("/{zapbox_id}")
+async def api_zapbox_delete(
+    zapbox_id: str,
     user: User = Depends(check_user_exists),
 ) -> None:
-    bitcoinswitch = await get_bitcoinswitch(bitcoinswitch_id)
-    if not bitcoinswitch:
+    zapbox = await get_zapbox(zapbox_id)
+    if not zapbox:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Bitcoinswitch does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist."
         )
-    if bitcoinswitch.wallet not in user.wallet_ids:
+    if zapbox.wallet not in user.wallet_ids:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
-            detail="You do not have permission to delete this bitcoinswitch.",
+            detail="You do not have permission to delete this ZapBox.",
         )
-    await delete_bitcoinswitch(bitcoinswitch_id)
+    await delete_zapbox(zapbox_id)

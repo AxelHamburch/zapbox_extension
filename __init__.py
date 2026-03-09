@@ -5,16 +5,16 @@ from loguru import logger
 
 from .crud import db
 from .tasks import wait_for_paid_invoices
-from .views import bitcoinswitch_generic_router
-from .views_api import bitcoinswitch_api_router
-from .views_lnurl import bitcoinswitch_lnurl_router
+from .views import zapbox_generic_router
+from .views_api import zapbox_api_router
+from .views_lnurl import zapbox_lnurl_router
 
 zapbox_ext: APIRouter = APIRouter(
     prefix="/zapbox", tags=["zapbox"]
 )
-zapbox_ext.include_router(bitcoinswitch_generic_router)
-zapbox_ext.include_router(bitcoinswitch_api_router)
-zapbox_ext.include_router(bitcoinswitch_lnurl_router)
+zapbox_ext.include_router(zapbox_generic_router)
+zapbox_ext.include_router(zapbox_api_router)
+zapbox_ext.include_router(zapbox_lnurl_router)
 
 zapbox_static_files = [
     {

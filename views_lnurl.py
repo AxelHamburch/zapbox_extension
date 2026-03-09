@@ -18,23 +18,23 @@ from lnurl import (
 )
 from pydantic import parse_obj_as
 
-from .crud import create_switch_payment, get_bitcoinswitch
+from .crud import create_switch_payment, get_zapbox
 
-bitcoinswitch_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
+zapbox_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 
 
-@bitcoinswitch_lnurl_router.get("/{bitcoinswitch_id}")
+@zapbox_lnurl_router.get("/{zapbox_id}")
 async def lnurl_params(
-    request: Request, bitcoinswitch_id: str, pin: str
+    request: Request, zapbox_id: str, pin: str
 ) -> LnurlPayResponse | LnurlErrorResponse:
-    switch = await get_bitcoinswitch(bitcoinswitch_id)
+    switch = await get_zapbox(zapbox_id)
     if not switch:
         return LnurlErrorResponse(
-            reason=f"bitcoinswitch {bitcoinswitch_id} not found on this server"
+            reason=f"ZapBox {zapbox_id} not found on this server"
         )
     if switch.disabled:
         return LnurlErrorResponse(
-            reason=f"bitcoinswitch {bitcoinswitch_id} is disabled"
+            reason=f"ZapBox {zapbox_id} is disabled"
         )
 
     _switch = next((_s for _s in switch.switches if _s.pin == int(pin)), None)
@@ -58,7 +58,7 @@ async def lnurl_params(
         )
     # let the max be 100x the min if variable pricing is enabled
     max_sendable = price_msat * 100 if _switch.variable else price_msat
-    url = request.url_for("zapbox.lnurl_cb", switch_id=bitcoinswitch_id, pin=pin)
+    url = request.url_for("zapbox.lnurl_cb", switch_id=zapbox_id, pin=pin)
     try:
         callback_url = parse_obj_as(CallbackUrl, str(url))
     except InvalidLnurl:
@@ -74,7 +74,7 @@ async def lnurl_params(
     return res
 
 
-@bitcoinswitch_lnurl_router.get("/cb/{switch_id}/{pin}", name="zapbox.lnurl_cb")
+@zapbox_lnurl_router.get("/cb/{switch_id}/{pin}", name="zapbox.lnurl_cb")
 async def lnurl_callback(
     switch_id: str,
     pin: int,
@@ -86,17 +86,17 @@ async def lnurl_callback(
     if not amount:
         return LnurlErrorResponse(reason="No amount specified.")
 
-    switch = await get_bitcoinswitch(switch_id)
+    switch = await get_zapbox(switch_id)
     if not switch:
         return LnurlErrorResponse(reason="Switch not found.")
     if switch.disabled:
-        return LnurlErrorResponse(reason=f"bitcoinswitch {switch_id} is disabled")
+        return LnurlErrorResponse(reason=f"ZapBox {switch_id} is disabled")
     _switch = next((_s for _s in switch.switches if _s.pin == int(pin)), None)
     if not _switch:
         return LnurlErrorResponse(reason=f"Switch with pin {pin} not found.")
 
     if not websocket_manager.has_connection(switch_id):
-        return LnurlErrorResponse(reason="No active bitcoinswitch connections.")
+        return LnurlErrorResponse(reason="No active ZapBox connections.")
 
     memo = f"{switch.title} (pin: {pin})"
     if comment:
@@ -113,7 +113,7 @@ async def lnurl_callback(
             "tag": "ZapBox",
             "pin": pin,
             "comment": comment,
-            "bitcoinswitch_id": switch_id,
+            "zapbox_id": switch_id,
         },
     )
 

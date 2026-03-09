@@ -34,10 +34,10 @@
           <q-table
             flat
             dense
-            :rows="bitcoinswitches"
+            :rows="zapboxes"
             row-key="id"
-            :columns="bitcoinswitchTable.columns"
-            v-model:pagination="bitcoinswitchTable.pagination"
+            :columns="zapboxTable.columns"
+            v-model:pagination="zapboxTable.pagination"
           >
             <template v-slot:header="props">
               <q-tr :props="props">
@@ -60,7 +60,7 @@
                     flat
                     dense
                     size="xs"
-                    @click="openUpdateBitcoinswitch(props.row.id)"
+                    @click="openUpdateZapBox(props.row.id)"
                     icon="edit"
                     color="blue"
                   >
@@ -105,7 +105,7 @@
                     flat
                     dense
                     size="xs"
-                    @click="deleteBitcoinswitch(props.row.id)"
+                    @click="deleteZapBox(props.row.id)"
                     icon="cancel"
                     color="pink"
                   >

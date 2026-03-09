@@ -2,7 +2,7 @@ window.PageZapboxPublic = {
   template: '#page-zapbox-public',
   data() {
     return {
-      bitcoinswitch: null,
+      zapbox: null,
       url: '',
       lnurl: '',
       activeUrl: '',
@@ -21,8 +21,8 @@ window.PageZapboxPublic = {
       .request('GET', `/zapbox/api/v1/public/${bsId}`)
       .catch(LNbits.utils.notifyApiError)
       .then(res => {
-        this.bitcoinswitch = res.data
-        this.activeSwitch = this.bitcoinswitch.switches[0]
+        this.zapbox = res.data
+        this.activeSwitch = this.zapbox.switches[0]
         this.activeUrl = `${this.url}?pin=${this.activeSwitch.pin}`
       })
   }

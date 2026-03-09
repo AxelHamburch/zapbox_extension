@@ -6,7 +6,7 @@ from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
 from .crud import (
-    get_bitcoinswitch,
+    get_zapbox,
     get_switch_payment_by_payment_hash,
 )
 
@@ -28,7 +28,7 @@ async def on_invoice_paid(payment: Payment) -> None:
 
     # Race condition guard: on fast Bolt Card payments the invoice can settle before
     # the DB transaction from create_switch_payment commits. Retry a few times before
-    # falling back to the bitcoinswitch_id and pin stored in the invoice extra fields.
+    # falling back to the zapbox_id and pin stored in the invoice extra fields.
     if not switch_payment:
         for delay in (0.1, 0.3, 0.6):
             await asyncio.sleep(delay)
@@ -37,23 +37,23 @@ async def on_invoice_paid(payment: Payment) -> None:
                 break
 
     if not switch_payment:
-        bitcoinswitch_id = payment.extra.get("bitcoinswitch_id")
+        zapbox_id = payment.extra.get("zapbox_id")
         pin = payment.extra.get("pin")
-        if not bitcoinswitch_id or pin is None:
+        if not zapbox_id or pin is None:
             logger.warning(
                 f"Switch payment not found for payment hash: {payment.payment_hash}"
             )
             return
         logger.info(
             f"Switch payment not in DB yet – using extra fields "
-            f"(bitcoinswitch_id={bitcoinswitch_id}, pin={pin})"
+            f"(zapbox_id={zapbox_id}, pin={pin})"
         )
-        bitcoinswitch = await get_bitcoinswitch(bitcoinswitch_id)
-        if not bitcoinswitch:
-            logger.error("no bitcoinswitch found for payment.")
+        zapbox = await get_zapbox(zapbox_id)
+        if not zapbox:
+            logger.error("no ZapBox found for payment.")
             return
         _switch = next(
-            (s for s in bitcoinswitch.switches if s.pin == int(pin)),
+            (s for s in zapbox.switches if s.pin == int(pin)),
             None,
         )
         if not _switch:
@@ -63,18 +63,18 @@ async def on_invoice_paid(payment: Payment) -> None:
         comment = payment.extra.get("comment")
         if comment:
             payload = f"{payload}-{comment}"
-        if bitcoinswitch.password and bitcoinswitch.password != comment:
-            logger.info(f"Wrong password entered for bitcoin switch: {bitcoinswitch.id}")
+        if zapbox.password and zapbox.password != comment:
+            logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
             return
-        return await websocket_manager.send(bitcoinswitch.id, payload)
+        return await websocket_manager.send(zapbox.id, payload)
 
-    bitcoinswitch = await get_bitcoinswitch(switch_payment.bitcoinswitch_id)
-    if not bitcoinswitch:
-        logger.error("no bitcoinswitch found for payment.")
+    zapbox = await get_zapbox(switch_payment.zapbox_id)
+    if not zapbox:
+        logger.error("no ZapBox found for payment.")
         return
 
     _switch = next(
-        (s for s in bitcoinswitch.switches if s.pin == switch_payment.pin),
+        (s for s in zapbox.switches if s.pin == switch_payment.pin),
         None,
     )
 
@@ -96,8 +96,8 @@ async def on_invoice_paid(payment: Payment) -> None:
         payload = f"{payload}-{comment}"
 
     # Wrong password in comment
-    if bitcoinswitch.password and bitcoinswitch.password != comment:
-        logger.info(f"Wrong password entered for bitcoin switch: {bitcoinswitch.id}")
+    if zapbox.password and zapbox.password != comment:
+        logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
         return
 
-    return await websocket_manager.send(bitcoinswitch.id, payload)
+    return await websocket_manager.send(zapbox.id, payload)

@@ -22,7 +22,7 @@ async def m001_initial(db):
     await db.execute(f"""
         CREATE TABLE zapbox.payment (
             id TEXT NOT NULL PRIMARY KEY,
-            bitcoinswitch_id TEXT NOT NULL,
+            zapbox_id TEXT NOT NULL,
             payment_hash TEXT,
             payload TEXT NOT NULL,
             pin INT,
