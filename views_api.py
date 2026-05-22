@@ -203,7 +203,7 @@ async def api_nfc_lnurlw(
             }))
             for attempt in range(1, MAX_PIN_ATTEMPTS + 1):
                 try:
-                    await asyncio.wait_for(pin_sessions[session_id].wait(), timeout=60)
+                    await asyncio.wait_for(pin_sessions[session_id].wait(), timeout=180)
                 except asyncio.TimeoutError:
                     raise HTTPException(
                         status_code=HTTPStatus.REQUEST_TIMEOUT,
