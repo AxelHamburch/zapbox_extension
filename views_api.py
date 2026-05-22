@@ -97,6 +97,12 @@ async def _run_pin_loop(
                 await asyncio.wait_for(pin_sessions[session_id].wait(), timeout=180)
             except asyncio.TimeoutError:
                 logger.warning(f"PIN session timed out: device={device_id} session={session_id}")
+                await websocket_updater(switch_id, json.dumps({
+                    "event": "pin_error",
+                    "reason": "PIN entry timed out.",
+                    "attempts": MAX_PIN_ATTEMPTS,
+                    "max_attempts": MAX_PIN_ATTEMPTS,
+                }))
                 return
 
             user_pin = pin_results.pop(session_id, "")
