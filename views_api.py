@@ -211,6 +211,11 @@ async def api_nfc_lnurlw(
                     )
                 user_pin = pin_results.pop(session_id, "")
                 pin_sessions[session_id].clear()
+                if not user_pin:
+                    raise HTTPException(
+                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        detail="Empty PIN received.",
+                    )
 
                 try:
                     async with httpx.AsyncClient() as client:
