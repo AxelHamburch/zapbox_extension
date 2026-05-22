@@ -99,6 +99,7 @@ async def _run_pin_loop(
                 logger.warning(f"PIN session timed out: device={device_id} session={session_id}")
                 await websocket_updater(switch_id, json.dumps({
                     "event": "pin_error",
+                    "session_id": session_id,
                     "reason": "PIN entry timed out.",
                     "attempts": MAX_PIN_ATTEMPTS,
                     "max_attempts": MAX_PIN_ATTEMPTS,
@@ -132,6 +133,7 @@ async def _run_pin_loop(
             logger.warning(f"NFC PIN error: {reason} (attempt {attempt}/{MAX_PIN_ATTEMPTS}, server_blocked={server_blocked})")
             await websocket_updater(switch_id, json.dumps({
                 "event": "pin_error",
+                "session_id": session_id,
                 "reason": reason,
                 "attempts": MAX_PIN_ATTEMPTS if server_blocked else attempt,
                 "max_attempts": MAX_PIN_ATTEMPTS,
