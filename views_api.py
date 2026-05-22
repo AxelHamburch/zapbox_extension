@@ -127,12 +127,13 @@ async def _run_pin_loop(
                 return  # Invoice submitted — tasks.py handles settlement
 
             reason = cb_data.get("reason", "Invalid PIN")
-            blocked = attempt >= MAX_PIN_ATTEMPTS
-            logger.warning(f"NFC PIN error: {reason} (attempt {attempt}/{MAX_PIN_ATTEMPTS})")
+            server_blocked = "blocked" in reason.lower()
+            blocked = attempt >= MAX_PIN_ATTEMPTS or server_blocked
+            logger.warning(f"NFC PIN error: {reason} (attempt {attempt}/{MAX_PIN_ATTEMPTS}, server_blocked={server_blocked})")
             await websocket_updater(switch_id, json.dumps({
                 "event": "pin_error",
                 "reason": reason,
-                "attempts": attempt,
+                "attempts": MAX_PIN_ATTEMPTS if server_blocked else attempt,
                 "max_attempts": MAX_PIN_ATTEMPTS,
             }))
             if blocked:
