@@ -1,5 +1,7 @@
+import asyncio
 import json
 import math
+import uuid
 from http import HTTPStatus
 
 import httpx
@@ -27,6 +29,14 @@ class NfcLnurlwRequest(BaseModel):
     lnurlw: str
 
 zapbox_api_router = APIRouter(prefix="/api/v1")
+
+MAX_PIN_ATTEMPTS = 3
+
+# Short-lived in-memory store for PIN sessions (one per active card tap, max 60s each).
+# pin_sessions maps session_id → asyncio.Event set by api_nfc_pin_submit().
+# pin_results  maps session_id → PIN string submitted by the device.
+pin_sessions: dict[str, asyncio.Event] = {}
+pin_results:  dict[str, str] = {}
 
 
 @zapbox_api_router.post("")
@@ -66,6 +76,32 @@ async def api_zapbox_trigger(
             detail="You do not have permission to trigger this switch.",
         )
     await websocket_updater(switch.id, f"{pin}-{_switch.duration}")
+
+
+@zapbox_api_router.post("/nfc/pin_submit")
+async def api_nfc_pin_submit(
+    session_id: str = Query(...),
+    pin: str = Query(...),
+) -> dict:
+    """Receives the 4-digit PIN entered by the user on the ZapBox touch display.
+
+    Called by the device after it receives a 'pin_required' WebSocket event.
+    The session_id ties this POST to the suspended api_nfc_lnurlw coroutine,
+    which is waiting on pin_sessions[session_id].
+    """
+    if session_id not in pin_sessions:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Unknown or expired PIN session.",
+        )
+    if not pin.isdigit() or len(pin) != 4:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail="PIN must be exactly 4 digits.",
+        )
+    pin_results[session_id] = pin
+    pin_sessions[session_id].set()
+    return {"status": "OK"}
 
 
 @zapbox_api_router.post("/nfc/{device_id}")
@@ -149,16 +185,78 @@ async def api_nfc_lnurlw(
             detail="Missing k1 or callback in LNURLW response.",
         )
 
-    # Step 3: Submit invoice to LNURLW callback
+    # Step 3: Submit invoice to LNURLW callback (with optional PIN)
     sep = "&" if "?" in callback else "?"
-    cb_url = f"{callback}{sep}k1={k1}&pr={payment.bolt11}"
-    async with httpx.AsyncClient() as client:
+    cb_base = f"{callback}{sep}k1={k1}&pr={payment.bolt11}"
+
+    pin_limit_msat = lnurl_data.get("pinLimit")
+    if pin_limit_msat is not None and price_msat >= pin_limit_msat:
+        # PIN protection active — ask the device for a PIN, then retry the callback
+        session_id = str(uuid.uuid4())
+        pin_sessions[session_id] = asyncio.Event()
         try:
-            cb_resp = await client.get(cb_url, timeout=10)
+            await websocket_updater(switch.id, json.dumps({
+                "event": "pin_required",
+                "amount_sat": sats,
+                "session_id": session_id,
+                "max_attempts": MAX_PIN_ATTEMPTS,
+            }))
+            for attempt in range(1, MAX_PIN_ATTEMPTS + 1):
+                try:
+                    await asyncio.wait_for(pin_sessions[session_id].wait(), timeout=60)
+                except asyncio.TimeoutError:
+                    raise HTTPException(
+                        status_code=HTTPStatus.REQUEST_TIMEOUT,
+                        detail="PIN entry timed out.",
+                    )
+                user_pin = pin_results.pop(session_id, "")
+                pin_sessions[session_id].clear()
+                if not user_pin:
+                    raise HTTPException(
+                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        detail="Empty PIN received.",
+                    )
+
+                try:
+                    async with httpx.AsyncClient() as client:
+                        cb_resp = await client.get(f"{cb_base}&pin={user_pin}", timeout=10)
+                        cb_data = cb_resp.json()
+                except Exception as exc:
+                    logger.error(f"NFC: PIN callback failed: {exc}")
+                    raise HTTPException(
+                        status_code=HTTPStatus.BAD_GATEWAY, detail="PIN callback failed."
+                    )
+
+                if cb_data.get("status") != "ERROR":
+                    logger.info(
+                        f"NFC PIN accepted: device={device_id} sats={sats} attempt={attempt}/{MAX_PIN_ATTEMPTS}"
+                    )
+                    return {"status": "OK", "payment_hash": payment.payment_hash}
+
+                reason = cb_data.get("reason", "Invalid PIN")
+                blocked = attempt >= MAX_PIN_ATTEMPTS
+                logger.warning(f"NFC PIN error: {reason} (attempt {attempt}/{MAX_PIN_ATTEMPTS})")
+                await websocket_updater(switch.id, json.dumps({
+                    "event": "pin_error",
+                    "reason": reason,
+                    "attempts": attempt,
+                    "max_attempts": MAX_PIN_ATTEMPTS,
+                }))
+                if blocked:
+                    raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=reason)
+                # Loop: device shows error 5s, then user enters new PIN → next pin_submit
+        finally:
+            pin_sessions.pop(session_id, None)
+            pin_results.pop(session_id, None)
+
+    # No PIN required — submit callback directly
+    try:
+        async with httpx.AsyncClient() as client:
+            cb_resp = await client.get(cb_base, timeout=10)
             cb_data = cb_resp.json()
-        except Exception as exc:
-            logger.error(f"NFC: LNURLW callback failed: {exc}")
-            raise HTTPException(status_code=HTTPStatus.BAD_GATEWAY, detail="LNURLW callback failed.")
+    except Exception as exc:
+        logger.error(f"NFC: LNURLW callback failed: {exc}")
+        raise HTTPException(status_code=HTTPStatus.BAD_GATEWAY, detail="LNURLW callback failed.")
 
     if cb_data.get("status") == "ERROR":
         logger.error(f"NFC: LNURLW callback error: {cb_data.get('reason')}")
