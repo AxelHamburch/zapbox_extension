@@ -20,6 +20,7 @@ from .crud import (
     create_switch_payment,
     delete_zapbox,
     get_last_paid_minipos_payment,
+    get_minipos_payment,
     get_zapbox,
     get_zapboxes,
     update_zapbox,
