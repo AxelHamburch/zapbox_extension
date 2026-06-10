@@ -44,6 +44,25 @@ class ZapBoxPublic(BaseModel):
     switches: list[Switch]
 
 
+class MiniPosInvoiceRequest(BaseModel):
+    amount: float
+    currency: str
+    device_id: str
+
+
+class MiniPosPayment(BaseModel):
+    id: str  # payment_hash
+    zapbox_id: str
+    wallet: str
+    sats: int
+    amount: float
+    currency: str
+    bolt11: str = ""  # kept so a Bolt Card tap can pay this pending invoice
+    paid: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class ZapBoxPayment(BaseModel):
     id: str
     zapbox_id: str

@@ -4,6 +4,7 @@ from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
 from .models import (
+    MiniPosPayment,
     ZapBox,
     ZapBoxPayment,
     CreateZapBox,
@@ -112,6 +113,39 @@ async def get_switch_payment_by_payment_hash(
         "SELECT * FROM zapbox.payment WHERE payment_hash = :h",
         {"h": payment_hash},
         ZapBoxPayment,
+    )
+
+
+async def create_minipos_payment(payment: MiniPosPayment) -> MiniPosPayment:
+    await db.insert("zapbox.minipos_payment", payment)
+    return payment
+
+
+async def get_minipos_payment(payment_hash: str) -> MiniPosPayment | None:
+    return await db.fetchone(
+        "SELECT * FROM zapbox.minipos_payment WHERE id = :id",
+        {"id": payment_hash},
+        MiniPosPayment,
+    )
+
+
+async def update_minipos_payment(payment: MiniPosPayment) -> MiniPosPayment:
+    payment.updated_at = datetime.now(timezone.utc)
+    await db.update("zapbox.minipos_payment", payment)
+    return payment
+
+
+async def get_last_paid_minipos_payment(
+    zapbox_id: str, wallet_id: str
+) -> MiniPosPayment | None:
+    return await db.fetchone(
+        """
+        SELECT * FROM zapbox.minipos_payment
+        WHERE zapbox_id = :zapbox_id AND wallet = :wallet AND paid = TRUE
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        {"zapbox_id": zapbox_id, "wallet": wallet_id},
+        MiniPosPayment,
     )
 
 

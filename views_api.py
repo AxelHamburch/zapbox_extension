@@ -6,23 +6,31 @@ from http import HTTPStatus
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from lnbits.core.models import User
+from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice, websocket_updater
-from lnbits.decorators import check_user_exists
+from lnbits.decorators import check_user_exists, require_invoice_key
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from lnurl.types import LnurlPayMetadata
 from pydantic import BaseModel
 
 from .crud import (
+    create_minipos_payment,
     create_zapbox,
     create_switch_payment,
     delete_zapbox,
+    get_last_paid_minipos_payment,
     get_zapbox,
     get_zapboxes,
     update_zapbox,
 )
-from .models import ZapBox, ZapBoxPublic, CreateZapBox
+from .models import (
+    MiniPosInvoiceRequest,
+    MiniPosPayment,
+    ZapBox,
+    ZapBoxPublic,
+    CreateZapBox,
+)
 
 
 class NfcLnurlwRequest(BaseModel):
@@ -146,6 +154,83 @@ async def _run_pin_loop(
         pin_results.pop(session_id, None)
 
 
+MINIPOS_PIN = 5            # Touch 3.5 CH01 relay GPIO
+MINIPOS_DEFAULT_DURATION = 3000  # ms, used when pin 5 is not configured on the device
+
+
+@zapbox_api_router.post("/pos/invoice")
+async def api_minipos_create_invoice(
+    data: MiniPosInvoiceRequest,
+    wallet: WalletTypeInfo = Depends(require_invoice_key),
+) -> dict:
+    """Mini-PoS invoice creation.
+
+    Called by the ZapBox device after the user entered an amount on the touch
+    display and pressed "Invoice". Settlement is detected by the invoice
+    listener in tasks.py which pushes the relay trigger over WebSocket.
+    """
+    if data.amount <= 0:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail="Amount must be greater than zero.",
+        )
+
+    currency = data.currency.strip()
+    if currency.lower() in ("sat", "sats"):
+        sats = int(data.amount)
+    else:
+        sats = await fiat_amount_as_satoshis(data.amount, currency.upper())
+    if sats < 1:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail=f"Amount ({data.amount} {currency}) is less than 1 satoshi.",
+        )
+
+    payment = await create_invoice(
+        wallet_id=wallet.wallet.id,
+        amount=sats,
+        memo=f"Mini-PoS {data.amount:.2f} {currency}",
+        extra={
+            "tag": "ZapBox",
+            "minipos": True,
+            "pin": MINIPOS_PIN,
+            "zapbox_id": data.device_id,
+        },
+    )
+    await create_minipos_payment(
+        MiniPosPayment(
+            id=payment.payment_hash,
+            zapbox_id=data.device_id,
+            wallet=wallet.wallet.id,
+            sats=sats,
+            amount=data.amount,
+            currency=currency,
+            bolt11=payment.bolt11,
+        )
+    )
+    logger.info(
+        f"Mini-PoS invoice created: device={data.device_id} "
+        f"amount={data.amount} {currency} sats={sats}"
+    )
+    return {
+        "payment_hash": payment.payment_hash,
+        "payment_request": payment.bolt11,
+    }
+
+
+@zapbox_api_router.get("/pos/invoice/last")
+async def api_minipos_last_paid(
+    device_id: str = Query(...),
+    wallet: WalletTypeInfo = Depends(require_invoice_key),
+) -> dict:
+    """Returns amount and currency of the last settled Mini-PoS payment
+    for this device ("Last Pay" button on the touch display)."""
+    payment = await get_last_paid_minipos_payment(device_id, wallet.wallet.id)
+    if not payment:
+        return {"amount": None}
+    return {"amount": payment.amount, "currency": payment.currency}
+
+
 @zapbox_api_router.post("/nfc/pin_submit")
 async def api_nfc_pin_submit(
     session_id: str = Query(...),
@@ -176,12 +261,14 @@ async def api_nfc_pin_submit(
 async def api_nfc_lnurlw(
     device_id: str,
     pin: int = Query(...),
+    minipos_hash: str | None = Query(None),
     data: NfcLnurlwRequest = ...,
 ) -> dict:
     """NFC Bolt Card payment endpoint.
 
     Called by the ZapBox device when it reads a Bolt Card (NTAG424 LNURLW).
-    1. Creates a Lightning invoice for the switch/pin amount.
+    1. Creates a Lightning invoice for the switch/pin amount — or, when
+       minipos_hash is given, reuses the pending Mini-PoS invoice.
     2. Resolves the LNURLW withdraw request (k1 + callback URL).
     3. Submits the invoice to the LNURLW callback so the Bolt Card wallet pays.
     4. Invoice settled event is handled by tasks.py which triggers the relay.
@@ -190,40 +277,64 @@ async def api_nfc_lnurlw(
     if not switch:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Device not found.")
 
-    _switch = next((s for s in switch.switches if s.pin == pin), None)
-    if not _switch:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"Pin {pin} not found.")
+    if minipos_hash:
+        # Mini-PoS: pay the invoice the device already created via /pos/invoice
+        minipos_payment = await get_minipos_payment(minipos_hash)
+        if not minipos_payment or minipos_payment.zapbox_id != device_id:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND, detail="Mini-PoS invoice not found."
+            )
+        if minipos_payment.paid:
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail="Mini-PoS invoice already paid.",
+            )
+        if not minipos_payment.bolt11:
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail="Mini-PoS invoice has no bolt11.",
+            )
+        sats = minipos_payment.sats
+        price_msat = sats * 1000
+        bolt11 = minipos_payment.bolt11
+        payment_hash = minipos_hash
+    else:
+        _switch = next((s for s in switch.switches if s.pin == pin), None)
+        if not _switch:
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"Pin {pin} not found.")
 
-    # Step 1: Create Lightning invoice for the switch amount
-    price_msat = int(
-        (
-            await fiat_amount_as_satoshis(float(_switch.amount), switch.currency)
-            if switch.currency != "sat"
-            else float(_switch.amount)
+        # Step 1: Create Lightning invoice for the switch amount
+        price_msat = int(
+            (
+                await fiat_amount_as_satoshis(float(_switch.amount), switch.currency)
+                if switch.currency != "sat"
+                else float(_switch.amount)
+            )
+            * 1000
         )
-        * 1000
-    )
-    sats = math.ceil(price_msat / 1000)
-    if sats < 1:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail=f"Configured amount ({_switch.amount} {switch.currency}) is less than 1 satoshi.",
-        )
+        sats = math.ceil(price_msat / 1000)
+        if sats < 1:
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail=f"Configured amount ({_switch.amount} {switch.currency}) is less than 1 satoshi.",
+            )
 
-    metadata = LnurlPayMetadata(json.dumps([["text/plain", switch.title]]))
-    payment = await create_invoice(
-        wallet_id=switch.wallet,
-        amount=sats,
-        memo=f"{switch.title} (NFC pin: {pin})",
-        unhashed_description=metadata.encode(),
-        extra={"tag": "ZapBox", "pin": pin, "comment": None, "zapbox_id": switch.id},
-    )
-    await create_switch_payment(
-        payment_hash=payment.payment_hash,
-        switch_id=switch.id,
-        pin=pin,
-        amount_msat=price_msat,
-    )
+        metadata = LnurlPayMetadata(json.dumps([["text/plain", switch.title]]))
+        payment = await create_invoice(
+            wallet_id=switch.wallet,
+            amount=sats,
+            memo=f"{switch.title} (NFC pin: {pin})",
+            unhashed_description=metadata.encode(),
+            extra={"tag": "ZapBox", "pin": pin, "comment": None, "zapbox_id": switch.id},
+        )
+        await create_switch_payment(
+            payment_hash=payment.payment_hash,
+            switch_id=switch.id,
+            pin=pin,
+            amount_msat=price_msat,
+        )
+        bolt11 = payment.bolt11
+        payment_hash = payment.payment_hash
 
     # Step 2: Resolve LNURLW → k1 + callback
     lnurlw = data.lnurlw
@@ -255,7 +366,7 @@ async def api_nfc_lnurlw(
 
     # Step 3: Submit invoice to LNURLW callback (with optional PIN)
     sep = "&" if "?" in callback else "?"
-    cb_base = f"{callback}{sep}k1={k1}&pr={payment.bolt11}"
+    cb_base = f"{callback}{sep}k1={k1}&pr={bolt11}"
 
     pin_limit_msat = lnurl_data.get("pinLimit")
     if pin_limit_msat is not None and price_msat >= pin_limit_msat:
@@ -277,7 +388,7 @@ async def api_nfc_lnurlw(
             cb_base=cb_base,
             sats=sats,
         ))
-        return {"status": "OK", "payment_hash": payment.payment_hash}
+        return {"status": "OK", "payment_hash": payment_hash}
 
     # No PIN required — submit callback directly
     try:
@@ -295,8 +406,11 @@ async def api_nfc_lnurlw(
             detail=f"LNURLW callback error: {cb_data.get('reason')}",
         )
 
-    logger.info(f"NFC Bolt Card payment initiated: device={device_id} pin={pin} sats={sats}")
-    return {"status": "OK", "payment_hash": payment.payment_hash}
+    logger.info(
+        f"NFC Bolt Card payment initiated: device={device_id} pin={pin} sats={sats}"
+        + (" (Mini-PoS)" if minipos_hash else "")
+    )
+    return {"status": "OK", "payment_hash": payment_hash}
 
 
 @zapbox_api_router.put("/{zapbox_id}")

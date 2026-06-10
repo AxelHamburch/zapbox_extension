@@ -52,3 +52,25 @@ async def m004_disposable(db):
         ALTER TABLE zapbox.switch
         ADD COLUMN disposable BOOLEAN NOT NULL DEFAULT TRUE;
         """)
+
+
+async def m005_minipos_payment(db):
+    """
+    Mini-PoS payments: invoices created from amounts entered on the device
+    touch display. Tracked separately from switch payments so the device can
+    query the last settled amount ("Last Pay" button).
+    """
+    await db.execute(f"""
+        CREATE TABLE zapbox.minipos_payment (
+            id TEXT NOT NULL PRIMARY KEY,
+            zapbox_id TEXT NOT NULL,
+            wallet TEXT NOT NULL,
+            sats {db.big_int},
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL,
+            bolt11 TEXT NOT NULL DEFAULT '',
+            paid BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now},
+            updated_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
+        );
+    """)
