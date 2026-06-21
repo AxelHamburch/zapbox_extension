@@ -192,7 +192,11 @@ async def api_auth_lnurl(
     action = "register" if _teach_open(device_id) else "auth"
     cb = str(request.url_for("zapbox.auth_cb", device_id=device_id))
     url = f"{cb}?tag=login&k1={k1}&action={action}"
-    lnurl = str(lnurl_encode(url))
+    # NOTE: lnurl.encode(url) returns an Lnurl whose str() is the *plain URL*;
+    # the bech32 carrier ("lnurl1…") lives in .bech32. Wallets only recognise
+    # LNURL-auth from the bech32 (or keyauth://) form — sending the raw URL makes
+    # them treat it as a payment. Lowercased to match the canonical QR form.
+    lnurl = str(lnurl_encode(url).bech32).lower()
     return {"lnurl": lnurl, "k1": k1, "action": action}
 
 
