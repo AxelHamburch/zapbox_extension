@@ -364,8 +364,25 @@
               </q-btn>
             </div>
             <q-toggle
+              v-model="formDialog.data.auth_enabled"
+              color="primary"
+              :label="
+                formDialog.data.auth_enabled
+                  ? 'Identities (LNURL-auth) ENABLED'
+                  : 'Identities (LNURL-auth) DISABLED'
+              "
+              dense
+              class="q-mb-sm"
+              ><q-tooltip
+                >Master switch for the whole LNURL-auth feature. When off, the
+                device cannot identify wallets or teach — all /auth endpoints
+                refuse.</q-tooltip
+              ></q-toggle
+            >
+            <q-toggle
               v-model="formDialog.data.touch_enabled"
               color="primary"
+              :disable="!formDialog.data.auth_enabled"
               :label="
                 formDialog.data.touch_enabled
                   ? 'Touch teach mode is ENABLED'

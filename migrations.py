@@ -120,3 +120,15 @@ async def m007_teach_pin_and_touch_enabled(db):
         ALTER TABLE zapbox.switch
         ADD COLUMN touch_enabled BOOLEAN NOT NULL DEFAULT TRUE;
         """)
+
+
+async def m008_auth_enabled(db):
+    """
+    Master switch for the whole LNURL-auth (Identities) feature on a ZapBox
+    instance. When false, all /auth endpoints refuse — identification and
+    teaching are fully off. Defaults true so existing Authy setups keep working.
+    """
+    await db.execute("""
+        ALTER TABLE zapbox.switch
+        ADD COLUMN auth_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+        """)

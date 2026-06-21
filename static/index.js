@@ -102,7 +102,8 @@ window.PageZapbox = {
         disabled: false,
         disposable: true,
         teach_pin: '',
-        touch_enabled: true
+        touch_enabled: true,
+        auth_enabled: true
       }
       this.authKeys = []
     },

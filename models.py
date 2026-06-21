@@ -22,6 +22,7 @@ class CreateZapBox(BaseModel):
     disposable: bool = True
     teach_pin: str | None = None
     touch_enabled: bool = True
+    auth_enabled: bool = True
 
 
 class ZapBox(BaseModel):
@@ -35,6 +36,7 @@ class ZapBox(BaseModel):
     disposable: bool = True
     teach_pin: str | None = None
     touch_enabled: bool = True
+    auth_enabled: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

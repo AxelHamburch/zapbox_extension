@@ -126,6 +126,8 @@ async def api_auth_teach_start(
     zapbox = await get_zapbox(device_id)
     if not zapbox:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Device not found.")
+    if not zapbox.auth_enabled:
+        return {"status": "ERROR", "reason": "disabled"}
     if not zapbox.touch_enabled:
         return {"status": "ERROR", "reason": "locked"}
     if not zapbox.teach_pin:
@@ -184,6 +186,10 @@ async def api_auth_lnurl(
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN, detail=f"ZapBox {device_id} is disabled"
         )
+    if not zapbox.auth_enabled:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail="Identities (LNURL-auth) are disabled"
+        )
 
     _purge_k1()
     k1 = secrets.token_hex(32)
@@ -214,6 +220,10 @@ async def api_auth_cb(
     if _rate_limited(device_id):
         logger.warning(f"LNURL-auth callback rate limited: device={device_id}")
         return {"status": "ERROR", "reason": "Too many requests"}
+
+    zapbox = await get_zapbox(device_id)
+    if not zapbox or not zapbox.auth_enabled:
+        return {"status": "ERROR", "reason": "Identities disabled"}
 
     cached = auth_k1_cache.get(k1)
     if not cached or cached[0] != device_id or cached[3] < _now():
