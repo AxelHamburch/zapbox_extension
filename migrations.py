@@ -74,3 +74,44 @@ async def m005_minipos_payment(db):
             updated_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
         );
     """)
+
+
+async def m006_auth_keys(db):
+    """
+    LNURL-auth (LUD-04) identities. Each row is a domain-specific linking key
+    (LUD-05) that a known wallet proved ownership of. When such a key
+    authenticates (action=auth) the device triggers its relay — analogous to a
+    settled payment, but without any payment.
+    """
+    await db.execute(f"""
+        CREATE TABLE zapbox.auth_key (
+            id TEXT NOT NULL PRIMARY KEY,
+            zapbox_id TEXT NOT NULL,
+            pubkey TEXT NOT NULL,
+            label TEXT,
+            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
+        );
+    """)
+    await db.execute("""
+        CREATE UNIQUE INDEX zapbox_auth_key_device_pubkey
+        ON zapbox.auth_key (zapbox_id, pubkey);
+    """)
+
+
+async def m007_teach_pin_and_touch_enabled(db):
+    """
+    Teach-mode access control on the ZapBox instance:
+    - teach_pin: 6-digit PIN verified server-side when opening a teach session.
+    - touch_enabled: gate for the teach access. Set to false after 3 wrong PIN
+      attempts (locks enrolling new identities); the operator re-enables it in
+      the instance editor. Normal payment/touch operation is unaffected.
+    """
+    await db.execute("""
+        ALTER TABLE zapbox.switch
+        ADD COLUMN teach_pin TEXT;
+        """)
+    await db.execute("""
+        ALTER TABLE zapbox.switch
+        ADD COLUMN touch_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+        """)

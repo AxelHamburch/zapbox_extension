@@ -4,6 +4,8 @@ from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
 from .models import (
+    AuthKey,
+    CreateAuthKey,
     MiniPosPayment,
     ZapBox,
     ZapBoxPayment,
@@ -146,6 +148,60 @@ async def get_last_paid_minipos_payment(
         """,
         {"zapbox_id": zapbox_id, "wallet": wallet_id},
         MiniPosPayment,
+    )
+
+
+async def create_auth_key(data: CreateAuthKey) -> AuthKey:
+    auth_key = AuthKey(
+        id=urlsafe_short_hash(),
+        zapbox_id=data.zapbox_id,
+        pubkey=data.pubkey,
+        label=data.label,
+        enabled=data.enabled,
+    )
+    await db.insert("zapbox.auth_key", auth_key)
+    return auth_key
+
+
+async def get_auth_keys(zapbox_id: str) -> list[AuthKey]:
+    return await db.fetchall(
+        """
+        SELECT * FROM zapbox.auth_key WHERE zapbox_id = :zapbox_id
+        ORDER BY created_at DESC
+        """,
+        {"zapbox_id": zapbox_id},
+        AuthKey,
+    )
+
+
+async def get_auth_key(auth_key_id: str) -> AuthKey | None:
+    return await db.fetchone(
+        "SELECT * FROM zapbox.auth_key WHERE id = :id",
+        {"id": auth_key_id},
+        AuthKey,
+    )
+
+
+async def get_auth_key_by_pubkey(zapbox_id: str, pubkey: str) -> AuthKey | None:
+    return await db.fetchone(
+        """
+        SELECT * FROM zapbox.auth_key
+        WHERE zapbox_id = :zapbox_id AND pubkey = :pubkey
+        """,
+        {"zapbox_id": zapbox_id, "pubkey": pubkey},
+        AuthKey,
+    )
+
+
+async def update_auth_key(auth_key: AuthKey) -> AuthKey:
+    await db.update("zapbox.auth_key", auth_key)
+    return auth_key
+
+
+async def delete_auth_key(auth_key_id: str) -> None:
+    await db.execute(
+        "DELETE FROM zapbox.auth_key WHERE id = :id",
+        {"id": auth_key_id},
     )
 
 

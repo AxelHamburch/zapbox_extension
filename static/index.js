@@ -10,6 +10,7 @@ window.PageZapbox = {
       filter: '',
       currency: 'sat',
       zapboxes: [],
+      authKeys: [],
       zapboxTable: {
         columns: [
           {
@@ -99,8 +100,11 @@ window.PageZapbox = {
         amount: 1,
         title: '',
         disabled: false,
-        disposable: true
+        disposable: true,
+        teach_pin: '',
+        touch_enabled: true
       }
+      this.authKeys = []
     },
     openPublicLink(id) {
       window.open(`/zapbox/public/${id}`, '_blank')
@@ -225,7 +229,59 @@ window.PageZapbox = {
         id: zapboxId
       })
       this.formDialog.data = _.clone(zapbox)
+      this.getAuthKeys(zapboxId)
       this.formDialog.show = true
+    },
+    shortKey(pubkey) {
+      if (!pubkey) return ''
+      return pubkey.length > 12
+        ? `${pubkey.slice(0, 6)}…${pubkey.slice(-4)}`
+        : pubkey
+    },
+    formatDate(value) {
+      if (!value) return ''
+      return new Date(value).toLocaleString()
+    },
+    getAuthKeys(zapboxId) {
+      if (!zapboxId) {
+        this.authKeys = []
+        return
+      }
+      LNbits.api
+        .request('GET', `${this.apiUrl}/auth/keys/${zapboxId}`)
+        .then(response => {
+          this.authKeys = response.data
+        })
+        .catch(LNbits.utils.notifyApiError)
+    },
+    updateAuthKey(authKey) {
+      LNbits.api
+        .request('PUT', `${this.apiUrl}/auth/keys/${authKey.id}`, null, {
+          label: authKey.label,
+          enabled: authKey.enabled
+        })
+        .then(() => {
+          this.$q.notify({
+            type: 'positive',
+            message: 'Identity updated.'
+          })
+        })
+        .catch(LNbits.utils.notifyApiError)
+    },
+    deleteAuthKey(authKey) {
+      LNbits.utils
+        .confirmDialog('Remove this identity?')
+        .onOk(() => {
+          LNbits.api
+            .request('DELETE', `${this.apiUrl}/auth/keys/${authKey.id}`)
+            .then(() => {
+              this.authKeys = _.reject(
+                this.authKeys,
+                obj => obj.id === authKey.id
+              )
+            })
+            .catch(LNbits.utils.notifyApiError)
+        })
     },
     copyDeviceString(zapboxId) {
       const loc = `wss://${window.location.host}/api/v1/ws/${zapboxId}`
