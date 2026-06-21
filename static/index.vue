@@ -233,36 +233,6 @@
             label="Password (optional)"
             tooltip="Password to protect the device, needs to be entered as comment in the LNURL"
           ></q-input>
-          <q-input
-            filled
-            dense
-            v-model.trim="formDialog.data.teach_pin"
-            type="text"
-            inputmode="numeric"
-            maxlength="6"
-            label="Teach-PIN (6 digits, LNURL-auth)"
-          >
-            <q-tooltip
-              >6-digit PIN entered on the device to open the LNURL-auth teach
-              mode. Verified server-side. 3 wrong attempts lock teaching until
-              you re-enable the touch mode below.</q-tooltip
-            >
-          </q-input>
-          <q-toggle
-            v-model="formDialog.data.touch_enabled"
-            color="primary"
-            :label="
-              formDialog.data.touch_enabled
-                ? 'Touch teach mode is ENABLED'
-                : 'Touch teach mode is DISABLED (locked)'
-            "
-            dense
-            class="q-mt-none q-ml-lg"
-            ><q-tooltip
-              >Gate for LNURL-auth teaching. Auto-disabled after 3 wrong
-              Teach-PINs; re-enable here. Normal payments are unaffected.</q-tooltip
-            ></q-toggle
-          >
           <q-btn
             unelevated
             class="q-mb-lg"
@@ -393,6 +363,36 @@
                 <q-tooltip>Reload identities</q-tooltip>
               </q-btn>
             </div>
+            <q-toggle
+              v-model="formDialog.data.touch_enabled"
+              color="primary"
+              :label="
+                formDialog.data.touch_enabled
+                  ? 'Touch teach mode is ENABLED'
+                  : 'Touch teach mode is DISABLED (locked)'
+              "
+              dense
+              class="q-mb-sm"
+              ><q-tooltip
+                >Gate for enrolling new identities. Auto-disabled after 3 wrong
+                Teach-PINs; re-enable here. Normal payments are unaffected.</q-tooltip
+              ></q-toggle
+            >
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialog.data.teach_pin"
+              type="text"
+              inputmode="numeric"
+              maxlength="6"
+              label="Teach-PIN (6 digits)"
+              class="q-mb-sm"
+            >
+              <q-tooltip
+                >6-digit PIN entered on the device (6 taps + hold) to open the
+                teach mode. Verified server-side.</q-tooltip
+              >
+            </q-input>
             <div v-if="authKeys.length === 0" class="text-caption text-grey">
               No identities enrolled yet. Open the teach mode on the device
               (6 taps + hold) and scan the register QR with a wallet.
