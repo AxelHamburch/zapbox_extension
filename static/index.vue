@@ -350,7 +350,7 @@
           ></q-separator>
           <div v-if="formDialog.data.id" class="q-mt-md">
             <div class="row items-center q-mb-sm">
-              <div class="col text-subtitle2">Identities (LNURL-auth)</div>
+              <div class="col text-subtitle2">Option: Identities (LNURL-auth)</div>
               <q-btn
                 flat
                 dense
