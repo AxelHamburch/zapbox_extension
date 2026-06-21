@@ -82,7 +82,15 @@ async def m006_auth_keys(db):
     (LUD-05) that a known wallet proved ownership of. When such a key
     authenticates (action=auth) the device triggers its relay — analogous to a
     settled payment, but without any payment.
+
+    Uniqueness of (zapbox_id, pubkey) is enforced with an inline table
+    constraint (creates an implicit index) rather than a separate CREATE INDEX:
+    a schema-qualified `CREATE INDEX ... ON zapbox.auth_key` is a syntax error
+    on SQLite, and the inline form is portable across SQLite and PostgreSQL.
+    The DROP IF EXISTS recovers from an earlier partial install where the table
+    was created but the follow-up statement failed (the table is empty here).
     """
+    await db.execute("DROP TABLE IF EXISTS zapbox.auth_key;")
     await db.execute(f"""
         CREATE TABLE zapbox.auth_key (
             id TEXT NOT NULL PRIMARY KEY,
@@ -90,12 +98,9 @@ async def m006_auth_keys(db):
             pubkey TEXT NOT NULL,
             label TEXT,
             enabled BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
+            created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now},
+            UNIQUE (zapbox_id, pubkey)
         );
-    """)
-    await db.execute("""
-        CREATE UNIQUE INDEX zapbox_auth_key_device_pubkey
-        ON zapbox.auth_key (zapbox_id, pubkey);
     """)
 
 
