@@ -6,9 +6,14 @@ from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
 from .crud import (
+    get_minipos_payment,
     get_zapbox,
     get_switch_payment_by_payment_hash,
+    update_minipos_payment,
 )
+
+MINIPOS_PIN = 5
+MINIPOS_DEFAULT_DURATION = 3000  # ms, fallback when pin 5 is not configured
 
 
 async def wait_for_paid_invoices():
@@ -23,6 +28,9 @@ async def wait_for_paid_invoices():
 async def on_invoice_paid(payment: Payment) -> None:
     if payment.extra.get("tag") != "ZapBox":
         return
+
+    if payment.extra.get("minipos"):
+        return await on_minipos_invoice_paid(payment)
 
     switch_payment = await get_switch_payment_by_payment_hash(payment.payment_hash)
 
@@ -101,3 +109,49 @@ async def on_invoice_paid(payment: Payment) -> None:
         return
 
     return await websocket_manager.send(zapbox.id, payload)
+
+
+async def on_minipos_invoice_paid(payment: Payment) -> None:
+    """Mini-PoS settlement: mark the payment as paid and push the relay
+    trigger to the device. Duration comes from the pin 5 switch config if
+    present, otherwise MINIPOS_DEFAULT_DURATION."""
+    zapbox_id = payment.extra.get("zapbox_id")
+    if not zapbox_id:
+        logger.warning(
+            f"Mini-PoS payment without zapbox_id: {payment.payment_hash}"
+        )
+        return
+
+    minipos_payment = await get_minipos_payment(payment.payment_hash)
+    if minipos_payment:
+        # Same race guard as switch payments: settlement can beat the insert
+        if not minipos_payment.paid:
+            minipos_payment.paid = True
+            await update_minipos_payment(minipos_payment)
+    else:
+        for delay in (0.1, 0.3, 0.6):
+            await asyncio.sleep(delay)
+            minipos_payment = await get_minipos_payment(payment.payment_hash)
+            if minipos_payment:
+                minipos_payment.paid = True
+                await update_minipos_payment(minipos_payment)
+                break
+        if not minipos_payment:
+            logger.warning(
+                f"Mini-PoS payment not found in DB: {payment.payment_hash}"
+            )
+
+    duration = MINIPOS_DEFAULT_DURATION
+    zapbox = await get_zapbox(zapbox_id)
+    if zapbox:
+        _switch = next(
+            (s for s in zapbox.switches if s.pin == MINIPOS_PIN), None
+        )
+        if _switch and _switch.duration > 0:
+            duration = _switch.duration
+
+    logger.info(
+        f"Mini-PoS paid: device={zapbox_id} hash={payment.payment_hash} "
+        f"duration={duration}"
+    )
+    return await websocket_manager.send(zapbox_id, f"{MINIPOS_PIN}-{duration}")

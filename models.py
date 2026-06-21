@@ -20,6 +20,8 @@ class CreateZapBox(BaseModel):
     password: str | None = None
     disabled: bool = False
     disposable: bool = True
+    teach_pin: str | None = None
+    touch_enabled: bool = True
 
 
 class ZapBox(BaseModel):
@@ -31,6 +33,8 @@ class ZapBox(BaseModel):
     password: str | None = None
     disabled: bool = False
     disposable: bool = True
+    teach_pin: str | None = None
+    touch_enabled: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -42,6 +46,46 @@ class ZapBox(BaseModel):
 class ZapBoxPublic(BaseModel):
     title: str
     switches: list[Switch]
+
+
+class MiniPosInvoiceRequest(BaseModel):
+    amount: float
+    currency: str
+    device_id: str
+
+
+class MiniPosPayment(BaseModel):
+    id: str  # payment_hash
+    zapbox_id: str
+    wallet: str
+    sats: int
+    amount: float
+    currency: str
+    bolt11: str = ""  # kept so a Bolt Card tap can pay this pending invoice
+    paid: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AuthKey(BaseModel):
+    id: str
+    zapbox_id: str
+    pubkey: str  # domain-specific linking key, hex (33-byte compressed)
+    label: str | None = None
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CreateAuthKey(BaseModel):
+    zapbox_id: str
+    pubkey: str
+    label: str | None = None
+    enabled: bool = True
+
+
+class UpdateAuthKey(BaseModel):
+    label: str | None = None
+    enabled: bool | None = None
 
 
 class ZapBoxPayment(BaseModel):

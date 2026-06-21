@@ -233,6 +233,36 @@
             label="Password (optional)"
             tooltip="Password to protect the device, needs to be entered as comment in the LNURL"
           ></q-input>
+          <q-input
+            filled
+            dense
+            v-model.trim="formDialog.data.teach_pin"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            label="Teach-PIN (6 digits, LNURL-auth)"
+          >
+            <q-tooltip
+              >6-digit PIN entered on the device to open the LNURL-auth teach
+              mode. Verified server-side. 3 wrong attempts lock teaching until
+              you re-enable the touch mode below.</q-tooltip
+            >
+          </q-input>
+          <q-toggle
+            v-model="formDialog.data.touch_enabled"
+            color="primary"
+            :label="
+              formDialog.data.touch_enabled
+                ? 'Touch teach mode is ENABLED'
+                : 'Touch teach mode is DISABLED (locked)'
+            "
+            dense
+            class="q-mt-none q-ml-lg"
+            ><q-tooltip
+              >Gate for LNURL-auth teaching. Auto-disabled after 3 wrong
+              Teach-PINs; re-enable here. Normal payments are unaffected.</q-tooltip
+            ></q-toggle
+          >
           <q-btn
             unelevated
             class="q-mb-lg"
@@ -343,6 +373,69 @@
                 </q-checkbox>
               </div>
             </div>
+          </div>
+          <q-separator
+            v-if="formDialog.data.id"
+            class="q-mt-md"
+          ></q-separator>
+          <div v-if="formDialog.data.id" class="q-mt-md">
+            <div class="row items-center q-mb-sm">
+              <div class="col text-subtitle2">Identities (LNURL-auth)</div>
+              <q-btn
+                flat
+                dense
+                round
+                size="sm"
+                icon="refresh"
+                color="primary"
+                @click="getAuthKeys(formDialog.data.id)"
+              >
+                <q-tooltip>Reload identities</q-tooltip>
+              </q-btn>
+            </div>
+            <div v-if="authKeys.length === 0" class="text-caption text-grey">
+              No identities enrolled yet. Open the teach mode on the device
+              (6 taps + hold) and scan the register QR with a wallet.
+            </div>
+            <q-list v-else bordered separator dense>
+              <q-item v-for="ak in authKeys" :key="ak.id">
+                <q-item-section>
+                  <q-input
+                    dense
+                    borderless
+                    v-model.trim="ak.label"
+                    placeholder="Label"
+                    @blur="updateAuthKey(ak)"
+                  ></q-input>
+                  <q-item-label caption
+                    >{{ shortKey(ak.pubkey) }} ·
+                    {{ formatDate(ak.created_at) }}</q-item-label
+                  >
+                </q-item-section>
+                <q-item-section side>
+                  <q-toggle
+                    v-model="ak.enabled"
+                    color="primary"
+                    dense
+                    @update:model-value="updateAuthKey(ak)"
+                  >
+                    <q-tooltip>Enabled / disabled</q-tooltip>
+                  </q-toggle>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn
+                    flat
+                    dense
+                    size="xs"
+                    icon="cancel"
+                    color="pink"
+                    @click="deleteAuthKey(ak)"
+                  >
+                    <q-tooltip>Delete identity</q-tooltip>
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </div>
           <div class="row q-mt-lg">
             <q-btn
