@@ -372,7 +372,7 @@
                   : 'Identities (LNURL-auth) DISABLED'
               "
               dense
-              class="q-mb-sm"
+              class="q-mb-sm q-mr-xl"
               ><q-tooltip
                 >Master switch for the whole LNURL-auth feature. When off, the
                 device cannot identify wallets or teach — all /auth endpoints
