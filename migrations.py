@@ -132,3 +132,38 @@ async def m008_auth_enabled(db):
         ALTER TABLE zapbox.switch
         ADD COLUMN auth_enabled BOOLEAN NOT NULL DEFAULT TRUE;
         """)
+
+
+async def m009_nfc_identities(db):
+    """
+    NFC identity allowlist for Ring-Login (NTAG 424 DNA / Bolt Card / Bolt Ring).
+    One row per card that is allowed to trigger a specific ZapBox device.
+    card_id references a card managed by the tagid_extension.
+
+    tagid_base_url / tagid_api_key are stored on the ZapBox instance so the
+    extension can call the tagid verify-only endpoint server-to-server.
+
+    Uniqueness of (zapbox_id, card_id) is enforced inline (avoids schema-
+    qualified CREATE INDEX which is a syntax error on SQLite).
+    The DROP IF EXISTS recovers from a partial earlier install.
+    """
+    await db.execute("DROP TABLE IF EXISTS zapbox.nfc_identity;")
+    await db.execute(f"""
+        CREATE TABLE zapbox.nfc_identity (
+            id TEXT NOT NULL PRIMARY KEY,
+            zapbox_id TEXT NOT NULL,
+            card_id TEXT NOT NULL,
+            label TEXT,
+            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now},
+            UNIQUE (zapbox_id, card_id)
+        );
+    """)
+    for stmt in [
+        "ALTER TABLE zapbox.switch ADD COLUMN tagid_base_url TEXT;",
+        "ALTER TABLE zapbox.switch ADD COLUMN tagid_api_key  TEXT;",
+    ]:
+        try:
+            await db.execute(stmt)
+        except Exception:
+            pass
