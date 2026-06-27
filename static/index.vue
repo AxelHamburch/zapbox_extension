@@ -454,6 +454,64 @@
               </q-item>
             </q-list>
           </div>
+          <div v-if="formDialog.data.id" class="q-mt-md">
+            <q-separator class="q-mb-md"></q-separator>
+            <div class="text-subtitle2 q-mb-sm">NFC Identities (TagID🔐 — Ring-Login)</div>
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialog.data.tagid_base_url"
+              type="text"
+              label="TagID base URL"
+              placeholder="https://lnbits.example.com/tagid"
+              class="q-mb-sm"
+            >
+              <q-tooltip>Base URL of the tagid_extension, e.g. https://my-lnbits.com/tagid</q-tooltip>
+            </q-input>
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialog.data.tagid_api_key"
+              type="text"
+              label="TagID Invoice Key"
+              class="q-mb-sm"
+            >
+              <q-tooltip>Invoice API key of the tagid wallet (used for server-to-server verify calls)</q-tooltip>
+            </q-input>
+            <div class="row items-center q-mb-sm q-mt-sm">
+              <div class="col text-caption text-grey-8">Enrolled NFC cards</div>
+              <q-btn
+                flat dense round size="sm" icon="refresh" color="primary"
+                @click="getNfcIdentities(formDialog.data.id)"
+              ><q-tooltip>Reload NFC cards</q-tooltip></q-btn>
+            </div>
+            <div v-if="nfcIdentities.length === 0" class="text-caption text-grey">
+              No NFC cards enrolled yet. Open teach mode on the device (6 taps + hold) and tap a Bolt Card / Bolt Ring.
+            </div>
+            <q-list v-else bordered separator dense>
+              <q-item v-for="nfc in nfcIdentities" :key="nfc.id">
+                <q-item-section>
+                  <q-input
+                    dense borderless
+                    v-model.trim="nfc.label"
+                    placeholder="Label"
+                    @blur="updateNfcIdentity(nfc)"
+                  ></q-input>
+                  <q-item-label caption>{{ nfc.card_id.slice(0, 6) }}…{{ nfc.card_id.slice(-4) }} · {{ formatDate(nfc.created_at) }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-toggle v-model="nfc.enabled" color="primary" dense @update:model-value="updateNfcIdentity(nfc)">
+                    <q-tooltip>Enable / disable this card</q-tooltip>
+                  </q-toggle>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat dense size="xs" icon="cancel" color="pink" @click="deleteNfcIdentity(nfc)">
+                    <q-tooltip>Remove card</q-tooltip>
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
           <div class="row q-mt-lg">
             <q-btn
               v-if="formDialog.data.id"

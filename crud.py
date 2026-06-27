@@ -6,7 +6,9 @@ from lnbits.helpers import urlsafe_short_hash
 from .models import (
     AuthKey,
     CreateAuthKey,
+    CreateNfcIdentity,
     MiniPosPayment,
+    NfcIdentity,
     ZapBox,
     ZapBoxPayment,
     CreateZapBox,
@@ -202,6 +204,70 @@ async def delete_auth_key(auth_key_id: str) -> None:
     await db.execute(
         "DELETE FROM zapbox.auth_key WHERE id = :id",
         {"id": auth_key_id},
+    )
+
+
+async def create_nfc_identity(data: CreateNfcIdentity) -> NfcIdentity:
+    nfc_id = NfcIdentity(
+        id=urlsafe_short_hash(),
+        zapbox_id=data.zapbox_id,
+        card_id=data.card_id,
+        label=data.label,
+        enabled=data.enabled,
+    )
+    await db.insert("zapbox.nfc_identity", nfc_id)
+    return nfc_id
+
+
+async def upsert_nfc_identity(data: CreateNfcIdentity) -> NfcIdentity:
+    existing = await get_nfc_identity_by_card_id(data.zapbox_id, data.card_id)
+    if existing:
+        existing.enabled = True
+        if data.label is not None:
+            existing.label = data.label
+        return await update_nfc_identity(existing)
+    return await create_nfc_identity(data)
+
+
+async def get_nfc_identities(zapbox_id: str) -> list[NfcIdentity]:
+    return await db.fetchall(
+        """
+        SELECT * FROM zapbox.nfc_identity WHERE zapbox_id = :zapbox_id
+        ORDER BY created_at DESC
+        """,
+        {"zapbox_id": zapbox_id},
+        NfcIdentity,
+    )
+
+
+async def get_nfc_identity(nfc_id: str) -> NfcIdentity | None:
+    return await db.fetchone(
+        "SELECT * FROM zapbox.nfc_identity WHERE id = :id",
+        {"id": nfc_id},
+        NfcIdentity,
+    )
+
+
+async def get_nfc_identity_by_card_id(zapbox_id: str, card_id: str) -> NfcIdentity | None:
+    return await db.fetchone(
+        """
+        SELECT * FROM zapbox.nfc_identity
+        WHERE zapbox_id = :zapbox_id AND card_id = :card_id
+        """,
+        {"zapbox_id": zapbox_id, "card_id": card_id},
+        NfcIdentity,
+    )
+
+
+async def update_nfc_identity(nfc: NfcIdentity) -> NfcIdentity:
+    await db.update("zapbox.nfc_identity", nfc)
+    return nfc
+
+
+async def delete_nfc_identity(nfc_id: str) -> None:
+    await db.execute(
+        "DELETE FROM zapbox.nfc_identity WHERE id = :id",
+        {"id": nfc_id},
     )
 
 

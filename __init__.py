@@ -9,12 +9,14 @@ from .views import zapbox_generic_router
 from .views_api import zapbox_api_router
 from .views_auth import zapbox_auth_router
 from .views_lnurl import zapbox_lnurl_router
+from .views_nfc import zapbox_nfc_router
 
 zapbox_ext: APIRouter = APIRouter(
     prefix="/zapbox", tags=["zapbox"]
 )
 zapbox_ext.include_router(zapbox_generic_router)
 zapbox_ext.include_router(zapbox_auth_router)
+zapbox_ext.include_router(zapbox_nfc_router)
 zapbox_ext.include_router(zapbox_api_router)
 zapbox_ext.include_router(zapbox_lnurl_router)
 

@@ -23,6 +23,8 @@ class CreateZapBox(BaseModel):
     teach_pin: str | None = None
     touch_enabled: bool = True
     auth_enabled: bool = True
+    tagid_base_url: str | None = None
+    tagid_api_key: str | None = None
 
 
 class ZapBox(BaseModel):
@@ -37,6 +39,8 @@ class ZapBox(BaseModel):
     teach_pin: str | None = None
     touch_enabled: bool = True
     auth_enabled: bool = True
+    tagid_base_url: str | None = None
+    tagid_api_key: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -86,6 +90,27 @@ class CreateAuthKey(BaseModel):
 
 
 class UpdateAuthKey(BaseModel):
+    label: str | None = None
+    enabled: bool | None = None
+
+
+class NfcIdentity(BaseModel):
+    id: str
+    zapbox_id: str
+    card_id: str
+    label: str | None = None
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CreateNfcIdentity(BaseModel):
+    zapbox_id: str
+    card_id: str
+    label: str | None = None
+    enabled: bool = True
+
+
+class UpdateNfcIdentity(BaseModel):
     label: str | None = None
     enabled: bool | None = None
 

@@ -11,6 +11,7 @@ window.PageZapbox = {
       currency: 'sat',
       zapboxes: [],
       authKeys: [],
+      nfcIdentities: [],
       zapboxTable: {
         columns: [
           {
@@ -103,9 +104,12 @@ window.PageZapbox = {
         disposable: true,
         teach_pin: '',
         touch_enabled: true,
-        auth_enabled: true
+        auth_enabled: true,
+        tagid_base_url: null,
+        tagid_api_key: null
       }
       this.authKeys = []
+      this.nfcIdentities = []
     },
     openPublicLink(id) {
       window.open(`/zapbox/public/${id}`, '_blank')
@@ -231,7 +235,36 @@ window.PageZapbox = {
       })
       this.formDialog.data = _.clone(zapbox)
       this.getAuthKeys(zapboxId)
+      this.getNfcIdentities(zapboxId)
       this.formDialog.show = true
+    },
+    getNfcIdentities(zapboxId) {
+      if (!zapboxId) { this.nfcIdentities = []; return }
+      LNbits.api
+        .request('GET', `${this.apiUrl}/nfc/identities/${zapboxId}`)
+        .then(response => { this.nfcIdentities = response.data })
+        .catch(LNbits.utils.notifyApiError)
+    },
+    updateNfcIdentity(nfc) {
+      LNbits.api
+        .request('PUT', `${this.apiUrl}/nfc/identities/${nfc.id}`, null, {
+          label: nfc.label,
+          enabled: nfc.enabled
+        })
+        .then(() => {
+          this.$q.notify({ type: 'positive', message: 'NFC card updated.' })
+        })
+        .catch(LNbits.utils.notifyApiError)
+    },
+    deleteNfcIdentity(nfc) {
+      LNbits.utils.confirmDialog('Remove this NFC card?').onOk(() => {
+        LNbits.api
+          .request('DELETE', `${this.apiUrl}/nfc/identities/${nfc.id}`)
+          .then(() => {
+            this.nfcIdentities = _.reject(this.nfcIdentities, obj => obj.id === nfc.id)
+          })
+          .catch(LNbits.utils.notifyApiError)
+      })
     },
     shortKey(pubkey) {
       if (!pubkey) return ''
