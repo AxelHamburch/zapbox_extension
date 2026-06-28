@@ -104,7 +104,7 @@ window.PageZapbox = {
         disposable: true,
         teach_pin: '',
         touch_enabled: true,
-        auth_enabled: true,
+        auth_enabled: false,
         tagid_base_url: null,
         tagid_api_key: null
       }
