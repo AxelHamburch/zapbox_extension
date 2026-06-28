@@ -349,7 +349,7 @@
           <div class="q-mt-md">
 
             <!-- Master toggle — always visible, collapses everything below -->
-            <div class="text-subtitle2 q-mb-xs">Option: Identity Login (LNURL-auth or NTAG424)</div>
+            <div class="text-subtitle2 q-mb-xs">Option: Identity Login (LNURL-auth or NFC Tag)</div>
             <q-toggle
               v-model="formDialog.data.auth_enabled"
               color="primary"
