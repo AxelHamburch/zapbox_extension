@@ -368,8 +368,8 @@
               color="primary"
               :label="
                 formDialog.data.auth_enabled
-                  ? 'Identities (LNURL-auth) ENABLED'
-                  : 'Identities (LNURL-auth) DISABLED'
+                  ? 'Identities (LNURL-auth or NTAG42) ENABLED'
+                  : 'Identities (LNURL-auth or NTAG42) DISABLED'
               "
               dense
               class="q-mb-sm q-mr-xl"
@@ -456,7 +456,7 @@
           </div>
           <div v-if="formDialog.data.id" class="q-mt-md">
             <q-separator class="q-mb-md"></q-separator>
-            <div class="text-subtitle2 q-mb-sm">NFC Identities (TagID🔐 — Ring-Login)</div>
+            <div class="text-subtitle2 q-mb-sm">Option: NFC Identities (TagID🔐 — NTAG424-Login)</div>
             <q-input
               filled
               dense
@@ -474,6 +474,7 @@
               v-model.trim="formDialog.data.tagid_api_key"
               type="text"
               label="TagID Invoice Key"
+              placeholder="Wallet invoice/read key"
               class="q-mb-sm"
             >
               <q-tooltip>Invoice API key of the tagid wallet (used for server-to-server verify calls)</q-tooltip>
