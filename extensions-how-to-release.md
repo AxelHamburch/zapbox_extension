@@ -181,3 +181,86 @@ In LNbits: uninstall the extension → reinstall it (so the new static files are
 | Keep old version entry in `extensions.json` | ✅ | ✅ |
 | Bump version in `config.json` | ❌ | ✅ |
 | Reinstall extension in LNbits | ✅ | ✅ |
+| Create GitHub Release with release notes | ❌ | ✅ |
+
+---
+
+## C) GitHub Release erstellen (mit Release Notes)
+
+Nachdem Tag und `extensions.json` fertig sind, wird auf GitHub ein offizieller Release angelegt. Die Release Notes fassen alle Änderungen **seit dem letzten offiziellen Release** zusammen.
+
+### 1. Commits seit dem letzten Release ermitteln
+
+Den Startpunkt (Basis-Commit des letzten Release) aus der Tabelle unten entnehmen, dann:
+
+```powershell
+cd d:\VSCode\zapbox_extension
+git log <BASIS-COMMIT>..HEAD --oneline
+git log <BASIS-COMMIT>..HEAD --format="%H %s%n%b"
+```
+
+Die Commits nach inhaltlichen Themen gruppieren (Features, Bug fixes, UI-Änderungen, chore-Commits weglassen).
+
+### 2. Release Notes als Markdown-Datei anlegen
+
+Datei im ZapBox-Repository unter `temp/` ablegen, damit sie leicht kopiert werden kann:
+
+```
+d:\VSCode\ZapBox\temp\zapbox-extension-v<VERSION>-release-notes.md
+```
+
+Struktur:
+```markdown
+## What's new since v<VORHERIGE VERSION>
+
+### Feature-Titel *(vX.Y.Z)*
+Kurze Erklärung warum diese Änderung nötig war (Problem) und was sie löst.
+- Bullet-Points zu Details
+
+### Bug fixes
+- **Kurztitel** *(vX.Y.Z)*: was war kaputt und wie gefixt.
+
+---
+
+## Compatibility
+| Component | Required version |
+…
+
+---
+
+## Upgrade notes
+Hinweis auf Migrationen, Breaking Changes oder besondere Schritte.
+```
+
+### 3. Release auf GitHub anlegen
+
+Auf GitHub → Releases → "Draft a new release":
+- **Tag:** `v<VERSION>` (bereits vorhanden)
+- **Title:** kurze, lesbare Bezeichnung, z. B. `v2.5.2 — Identity Login: LNURL-auth & NFC tap`
+- **Body:** Inhalt der Markdown-Datei aus Schritt 2 einfügen
+
+> **Title-Konvention:** `v<VERSION> — <Was ist neu in einem Satz>`
+
+---
+
+## Referenz: Letzter offizieller Release
+
+Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der richtige Startpunkt bekannt ist.
+
+### zapbox_extension
+
+| Version | Tag-Commit | Commit-Message |
+|---------|-----------|----------------|
+| **v2.5.2** *(aktuell)* | `81f6954` | `fix(ui): rename identity login label to NFC Tag instead of NTAG424` |
+| v2.3.0 *(Basis für v2.5.2 Release Notes)* | `db1d610` | — |
+
+Für den nächsten Release: `git log 81f6954..HEAD --oneline`
+
+### tagid_extension
+
+| Version | Tag-Commit | Commit-Message |
+|---------|-----------|----------------|
+| **v2.1.0** *(aktuell)* | `2796a87` | `chore: restore short_description for v2.1.0 entry` |
+| v2.0.0 *(Basis für v2.1.0 Release Notes)* | `b81c204` | — |
+
+Für den nächsten Release: `git log 2796a87..HEAD --oneline`
