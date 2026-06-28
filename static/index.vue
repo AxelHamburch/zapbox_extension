@@ -345,8 +345,8 @@
             </div>
           </div>
           <!-- ── Identity Login (collapsed by default) ──────────────────── -->
-          <q-separator v-if="formDialog.data.id" class="q-mt-md"></q-separator>
-          <div v-if="formDialog.data.id" class="q-mt-md">
+          <q-separator class="q-mt-md"></q-separator>
+          <div class="q-mt-md">
 
             <!-- Master toggle — always visible, collapses everything below -->
             <div class="text-subtitle2 q-mb-xs">Option: Identity Login (LNURL-auth or NTAG424)</div>
