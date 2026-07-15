@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.5.3** *(aktuell)* | `e61a244` | `feat: release v2.5.3 - device supplies the relay GPIO` |
-| v2.5.2 *(Basis für v2.5.3 Release Notes)* | `81f6954` | — |
+| **v2.5.4** *(aktuell)* | `594253e` | `fix: use websocket_updater so settled payments reach the device` |
+| v2.5.3 *(Basis für v2.5.4 Release Notes)* | `e61a244` | — |
 
-Für den nächsten Release: `git log e61a244..HEAD --oneline`
+Für den nächsten Release: `git log 594253e..HEAD --oneline`
 
 ### tagid_extension
 
