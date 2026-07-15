@@ -12,8 +12,7 @@ from .crud import (
     update_minipos_payment,
 )
 
-MINIPOS_PIN = 5
-MINIPOS_DEFAULT_DURATION = 3000  # ms, fallback when pin 5 is not configured
+MINIPOS_DEFAULT_DURATION = 3000  # ms, fallback when the device's pin has no switch config
 
 
 async def wait_for_paid_invoices():
@@ -113,12 +112,15 @@ async def on_invoice_paid(payment: Payment) -> None:
 
 async def on_minipos_invoice_paid(payment: Payment) -> None:
     """Mini-PoS settlement: mark the payment as paid and push the relay
-    trigger to the device. Duration comes from the pin 5 switch config if
-    present, otherwise MINIPOS_DEFAULT_DURATION."""
+    trigger to the device. The relay pin is supplied by the device when it
+    requests the invoice (stored in extra['pin']) — the extension does not know
+    the GPIO layout. Duration comes from that pin's switch config if present,
+    otherwise MINIPOS_DEFAULT_DURATION."""
     zapbox_id = payment.extra.get("zapbox_id")
-    if not zapbox_id:
+    pin = payment.extra.get("pin")
+    if not zapbox_id or pin is None:
         logger.warning(
-            f"Mini-PoS payment without zapbox_id: {payment.payment_hash}"
+            f"Mini-PoS payment without zapbox_id/pin: {payment.payment_hash}"
         )
         return
 
@@ -145,13 +147,13 @@ async def on_minipos_invoice_paid(payment: Payment) -> None:
     zapbox = await get_zapbox(zapbox_id)
     if zapbox:
         _switch = next(
-            (s for s in zapbox.switches if s.pin == MINIPOS_PIN), None
+            (s for s in zapbox.switches if s.pin == int(pin)), None
         )
         if _switch and _switch.duration > 0:
             duration = _switch.duration
 
     logger.info(
         f"Mini-PoS paid: device={zapbox_id} hash={payment.payment_hash} "
-        f"duration={duration}"
+        f"pin={pin} duration={duration}"
     )
-    return await websocket_manager.send(zapbox_id, f"{MINIPOS_PIN}-{duration}")
+    return await websocket_manager.send(zapbox_id, f"{pin}-{duration}")

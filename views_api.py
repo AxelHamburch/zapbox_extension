@@ -155,10 +155,6 @@ async def _run_pin_loop(
         pin_results.pop(session_id, None)
 
 
-MINIPOS_PIN = 5            # Touch 3.5 CH01 relay GPIO
-MINIPOS_DEFAULT_DURATION = 3000  # ms, used when pin 5 is not configured on the device
-
-
 @zapbox_api_router.post("/pos/invoice")
 async def api_minipos_create_invoice(
     data: MiniPosInvoiceRequest,
@@ -194,7 +190,7 @@ async def api_minipos_create_invoice(
         extra={
             "tag": "ZapBox",
             "minipos": True,
-            "pin": MINIPOS_PIN,
+            "pin": data.pin,
             "zapbox_id": data.device_id,
         },
     )

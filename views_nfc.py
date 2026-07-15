@@ -36,7 +36,6 @@ from .views_auth import _assert_device_owner, _teach_open
 
 zapbox_nfc_router = APIRouter(prefix="/api/v1")
 
-DEFAULT_AUTH_PIN = 5
 DEFAULT_AUTH_DURATION = 3000
 _TAGID_TIMEOUT = 10  # seconds for server-to-server HTTP call
 
@@ -98,7 +97,7 @@ async def api_nfc_auth(
     p: str = Query(...),
     c: str = Query(...),
     pin: str | None = Query(None),
-    auth_pin: int = Query(DEFAULT_AUTH_PIN),
+    auth_pin: int = Query(...),  # relay GPIO supplied by the device (its primary channel)
     auth_duration: int = Query(DEFAULT_AUTH_DURATION),
 ) -> dict:
     """Active identification: verify NTAG 424 tap and trigger relay if card is known.

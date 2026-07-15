@@ -40,7 +40,6 @@ zapbox_auth_router = APIRouter(prefix="/api/v1")
 K1_TTL = 120          # seconds — auth challenge lifetime (single use)
 TEACH_TTL = 300       # seconds — open teach session lifetime (5 min)
 MAX_TEACH_ATTEMPTS = 3
-DEFAULT_AUTH_PIN = 5          # touch 3.5 CH01 relay GPIO
 DEFAULT_AUTH_DURATION = 3000  # ms
 
 # In-memory stores (analogous to pin_sessions in views_api.py).
@@ -172,7 +171,7 @@ async def api_auth_teach_stop(device_id: str = Query(...)) -> dict:
 async def api_auth_lnurl(
     request: Request,
     device_id: str,
-    pin: int = Query(DEFAULT_AUTH_PIN),
+    pin: int = Query(...),  # relay GPIO supplied by the device (its primary channel)
     duration: int = Query(DEFAULT_AUTH_DURATION),
 ) -> dict:
     """Device asks for an auth LNURL. Creates+caches a fresh k1 and returns the

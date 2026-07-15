@@ -58,6 +58,7 @@ class MiniPosInvoiceRequest(BaseModel):
     amount: float
     currency: str
     device_id: str
+    pin: int  # relay GPIO to fire on settlement — the device's primary channel
 
 
 class MiniPosPayment(BaseModel):
