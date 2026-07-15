@@ -1,7 +1,7 @@
 import asyncio
 
 from lnbits.core.models import Payment
-from lnbits.core.services import websocket_manager
+from lnbits.core.services import websocket_updater
 from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
@@ -21,7 +21,14 @@ async def wait_for_paid_invoices():
 
     while True:
         payment = await invoice_queue.get()
-        await on_invoice_paid(payment)
+        # Never let a single bad payment kill the listener — otherwise the device
+        # stops being notified about *every* subsequent settlement until restart.
+        try:
+            await on_invoice_paid(payment)
+        except Exception as exc:
+            logger.error(
+                f"ZapBox: error handling paid invoice {payment.payment_hash}: {exc}"
+            )
 
 
 async def on_invoice_paid(payment: Payment) -> None:
@@ -73,7 +80,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         if zapbox.password and zapbox.password != comment:
             logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
             return
-        return await websocket_manager.send(zapbox.id, payload)
+        return await websocket_updater(zapbox.id, payload)
 
     zapbox = await get_zapbox(switch_payment.zapbox_id)
     if not zapbox:
@@ -107,7 +114,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
         return
 
-    return await websocket_manager.send(zapbox.id, payload)
+    return await websocket_updater(zapbox.id, payload)
 
 
 async def on_minipos_invoice_paid(payment: Payment) -> None:
@@ -156,4 +163,4 @@ async def on_minipos_invoice_paid(payment: Payment) -> None:
         f"Mini-PoS paid: device={zapbox_id} hash={payment.payment_hash} "
         f"pin={pin} duration={duration}"
     )
-    return await websocket_manager.send(zapbox_id, f"{pin}-{duration}")
+    return await websocket_updater(zapbox_id, f"{pin}-{duration}")
