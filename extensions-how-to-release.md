@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.5.2** *(aktuell)* | `81f6954` | `fix(ui): rename identity login label to NFC Tag instead of NTAG424` |
-| v2.3.0 *(Basis für v2.5.2 Release Notes)* | `db1d610` | — |
+| **v2.5.3** *(aktuell)* | `e61a244` | `feat: release v2.5.3 - device supplies the relay GPIO` |
+| v2.5.2 *(Basis für v2.5.3 Release Notes)* | `81f6954` | — |
 
-Für den nächsten Release: `git log 81f6954..HEAD --oneline`
+Für den nächsten Release: `git log e61a244..HEAD --oneline`
 
 ### tagid_extension
 
