@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.6.0** *(aktuell)* | `249c238` | `Merge feat/device-ws-channel: device WebSocket channel (v2.6.0)` |
-| v2.5.4 *(Basis für v2.6.0 Release Notes)* | `594253e` | `fix: use websocket_updater so settled payments reach the device` |
+| **v2.6.1** *(aktuell)* | `d52416d` | `feat: release v2.6.1 – route all device pushes over the device channel` |
+| v2.6.0 *(Basis für v2.6.1 Release Notes)* | `249c238` | `Merge feat/device-ws-channel: device WebSocket channel (v2.6.0)` |
 
-Für den nächsten Release: `git log 249c238..HEAD --oneline`
+Für den nächsten Release: `git log d52416d..HEAD --oneline`
 
 ### tagid_extension
 
