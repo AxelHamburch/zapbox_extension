@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.6.1** *(aktuell)* | `d52416d` | `feat: release v2.6.1 – route all device pushes over the device channel` |
-| v2.6.0 *(Basis für v2.6.1 Release Notes)* | `249c238` | `Merge feat/device-ws-channel: device WebSocket channel (v2.6.0)` |
+| **v2.6.2** *(aktuell)* | `b24c1e8` | `feat: release v2.6.2 – accept pin_submit over the device channel` |
+| v2.6.1 *(Basis für v2.6.2 Release Notes)* | `d52416d` | `feat: release v2.6.1 – route all device pushes over the device channel` |
 
-Für den nächsten Release: `git log d52416d..HEAD --oneline`
+Für den nächsten Release: `git log b24c1e8..HEAD --oneline`
 
 ### tagid_extension
 
