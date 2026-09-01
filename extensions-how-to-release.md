@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.5.4** *(aktuell)* | `594253e` | `fix: use websocket_updater so settled payments reach the device` |
-| v2.5.3 *(Basis für v2.5.4 Release Notes)* | `e61a244` | — |
+| **v2.6.0** *(aktuell)* | `04b277d` | `feat: release v2.6.0 – device WebSocket channel for Bolt Card taps` |
+| v2.5.4 *(Basis für v2.6.0 Release Notes)* | `594253e` | `fix: use websocket_updater so settled payments reach the device` |
 
-Für den nächsten Release: `git log 594253e..HEAD --oneline`
+Für den nächsten Release: `git log 04b277d..HEAD --oneline`
 
 ### tagid_extension
 
