@@ -18,7 +18,7 @@ from http import HTTPStatus
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from lnbits.core.models import User
-from lnbits.core.services import websocket_updater
+from .device_channel import push_to_device
 from lnbits.decorators import check_user_exists
 from loguru import logger
 
@@ -138,7 +138,7 @@ async def api_nfc_auth(
         logger.info(f"Ring-Login: unknown/disabled card {card_id} on device {zapbox_id}")
         return {"status": "ERROR", "reason": "Unknown identity"}
 
-    await websocket_updater(zapbox_id, f"{auth_pin}-{auth_duration}")
+    await push_to_device(zapbox_id, f"{auth_pin}-{auth_duration}")
     logger.info(
         f"Ring-Login: NFC auth ok: device={zapbox_id} card={card_id} pin={auth_pin}"
     )
@@ -189,7 +189,7 @@ async def api_nfc_teach(
     nfc = await upsert_nfc_identity(
         CreateNfcIdentity(zapbox_id=zapbox_id, card_id=card_id)
     )
-    await websocket_updater(
+    await push_to_device(
         zapbox_id, json.dumps({"event": "nfc_enrolled", "card_id": card_id})
     )
     logger.info(f"Ring-Login: NFC enrolled: device={zapbox_id} card={card_id}")

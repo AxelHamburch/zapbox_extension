@@ -1,7 +1,7 @@
 import asyncio
 
 from lnbits.core.models import Payment
-from lnbits.core.services import websocket_updater
+from .device_channel import push_to_device
 from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
@@ -80,7 +80,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         if zapbox.password and zapbox.password != comment:
             logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
             return
-        return await websocket_updater(zapbox.id, payload)
+        return await push_to_device(zapbox.id, payload)
 
     zapbox = await get_zapbox(switch_payment.zapbox_id)
     if not zapbox:
@@ -114,7 +114,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         logger.info(f"Wrong password entered for ZapBox: {zapbox.id}")
         return
 
-    return await websocket_updater(zapbox.id, payload)
+    return await push_to_device(zapbox.id, payload)
 
 
 async def on_minipos_invoice_paid(payment: Payment) -> None:
@@ -163,4 +163,4 @@ async def on_minipos_invoice_paid(payment: Payment) -> None:
         f"Mini-PoS paid: device={zapbox_id} hash={payment.payment_hash} "
         f"pin={pin} duration={duration}"
     )
-    return await websocket_updater(zapbox_id, f"{pin}-{duration}")
+    return await push_to_device(zapbox_id, f"{pin}-{duration}")

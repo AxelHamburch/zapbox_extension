@@ -19,6 +19,7 @@ from lnurl import (
 from pydantic import parse_obj_as
 
 from .crud import create_switch_payment, get_zapbox
+from .device_channel import has_device_channel
 
 zapbox_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 
@@ -95,7 +96,14 @@ async def lnurl_callback(
     if not _switch:
         return LnurlErrorResponse(reason=f"Switch with pin {pin} not found.")
 
-    if not websocket_manager.has_connection(switch_id):
+    # A device is reachable via the core WebSocket OR the persistent device
+    # channel (views_ws.py). Newer firmware deliberately keeps only the device
+    # channel open — NAT-challenged routers cannot hold two long-lived
+    # connections to the same host, so the device runs exactly one.
+    if not (
+        websocket_manager.has_connection(switch_id)
+        or has_device_channel(switch_id)
+    ):
         return LnurlErrorResponse(reason="No active ZapBox connections.")
 
     memo = f"{switch.title} (pin: {pin})"

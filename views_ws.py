@@ -43,6 +43,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from .crud import get_zapbox
+from .device_channel import register_channel, unregister_channel
 from .views_api import process_nfc_lnurlw
 
 zapbox_ws_router = APIRouter(prefix="/api/v1")
@@ -92,9 +93,11 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
 
     await websocket.accept()
     logger.info(f"ZapBox WS: device channel connected: {device_id}")
-    # send_lock: replies are sent from spawned tasks; serialize writes so two
-    # concurrent taps cannot interleave frames on the socket.
-    send_lock = asyncio.Lock()
+    # Register so push_to_device() routes relay triggers and events over this
+    # socket instead of the (possibly half-open) core WebSocket. The returned
+    # lock serializes writes: replies from spawned tasks and pushed events must
+    # not interleave frames on the socket.
+    send_lock = register_channel(device_id, websocket)
     try:
         while True:
             raw = await websocket.receive_text()
@@ -114,3 +117,5 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
             # without breaking older servers.
     except WebSocketDisconnect:
         logger.info(f"ZapBox WS: device channel disconnected: {device_id}")
+    finally:
+        unregister_channel(device_id, websocket)

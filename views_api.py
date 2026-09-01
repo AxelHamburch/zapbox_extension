@@ -7,7 +7,8 @@ from http import HTTPStatus
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from lnbits.core.models import User, WalletTypeInfo
-from lnbits.core.services import create_invoice, websocket_updater
+from lnbits.core.services import create_invoice
+from .device_channel import push_to_device
 from lnbits.decorators import check_user_exists, require_invoice_key
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
@@ -84,7 +85,7 @@ async def api_zapbox_trigger(
             status_code=HTTPStatus.FORBIDDEN,
             detail="You do not have permission to trigger this switch.",
         )
-    await websocket_updater(switch.id, f"{pin}-{_switch.duration}")
+    await push_to_device(switch.id, f"{pin}-{_switch.duration}")
 
 
 async def _run_pin_loop(
@@ -106,7 +107,7 @@ async def _run_pin_loop(
                 await asyncio.wait_for(pin_sessions[session_id].wait(), timeout=180)
             except asyncio.TimeoutError:
                 logger.warning(f"PIN session timed out: device={device_id} session={session_id}")
-                await websocket_updater(switch_id, json.dumps({
+                await push_to_device(switch_id, json.dumps({
                     "event": "pin_error",
                     "session_id": session_id,
                     "reason": "PIN entry timed out.",
@@ -140,7 +141,7 @@ async def _run_pin_loop(
             server_blocked = "blocked" in reason.lower()
             blocked = attempt >= MAX_PIN_ATTEMPTS or server_blocked
             logger.warning(f"NFC PIN error: {reason} (attempt {attempt}/{MAX_PIN_ATTEMPTS}, server_blocked={server_blocked})")
-            await websocket_updater(switch_id, json.dumps({
+            await push_to_device(switch_id, json.dumps({
                 "event": "pin_error",
                 "session_id": session_id,
                 "reason": reason,
@@ -373,7 +374,7 @@ async def process_nfc_lnurlw(
         # (15s timeout) is not blocked for the full PIN entry duration (up to 3×180s).
         session_id = str(uuid.uuid4())
         pin_sessions[session_id] = asyncio.Event()
-        await websocket_updater(switch.id, json.dumps({
+        await push_to_device(switch.id, json.dumps({
             "event": "pin_required",
             "amount_sat": sats,
             "session_id": session_id,

@@ -18,7 +18,7 @@ from http import HTTPStatus
 from embit import ec
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from lnbits.core.models import User
-from lnbits.core.services import websocket_updater
+from .device_channel import push_to_device
 from lnbits.decorators import check_user_exists
 from lnurl import encode as lnurl_encode
 from loguru import logger
@@ -108,7 +108,7 @@ async def _teach_timeout(device_id: str, expiry: float) -> None:
     await asyncio.sleep(max(0.0, expiry - _now()))
     if teach_sessions.get(device_id) == expiry:
         teach_sessions.pop(device_id, None)
-        await websocket_updater(device_id, json.dumps({"event": "teach_ended"}))
+        await push_to_device(device_id, json.dumps({"event": "teach_ended"}))
         logger.info(f"LNURL-auth teach session expired: device={device_id}")
 
 
@@ -242,7 +242,7 @@ async def api_auth_cb(
         else:
             await create_auth_key(CreateAuthKey(zapbox_id=device_id, pubkey=key))
         auth_k1_cache.pop(k1, None)
-        await websocket_updater(
+        await push_to_device(
             device_id, json.dumps({"event": "auth_enrolled", "pubkey": key})
         )
         logger.info(f"LNURL-auth enrolled key: device={device_id} key={key[:10]}…")
@@ -256,7 +256,7 @@ async def api_auth_cb(
 
     _device_id, pin, duration, _expiry = cached
     auth_k1_cache.pop(k1, None)
-    await websocket_updater(device_id, f"{pin}-{duration}")
+    await push_to_device(device_id, f"{pin}-{duration}")
     logger.info(f"LNURL-auth ok: device={device_id} key={key[:10]}… pin={pin}")
     return {"status": "OK"}
 
