@@ -23,10 +23,17 @@ Protocol (JSON text frames):
     {"event": "lnurlw_result", "request_id": "42", "status": "ERROR",
      "detail": "..."}
 
-The relay trigger on settlement still arrives via the core WebSocket
-(tasks.py), exactly as for QR payments. PIN-protected cards also keep their
-existing flow: pin_required is pushed over the core WebSocket and the PIN is
-submitted via HTTPS pin_submit.
+  device → server (v2.6.2+):
+    {"event": "pin_submit", "session_id": "...", "pin": "1234"}
+  server → device:
+    {"event": "pin_submit_result", "session_id": "...", "status": "OK"}
+    {"event": "pin_submit_result", "session_id": "...", "status": "ERROR",
+     "detail": "..."}
+
+Relay triggers on settlement and the pin_required / pin_error events go
+through push_to_device() (device_channel.py): over this channel when it is
+connected, core WebSocket otherwise. The HTTPS pin_submit endpoint remains as
+fallback for older firmware.
 
 Keepalive is protocol-level: the device sends WebSocket pings
 (enableHeartbeat), the server answers pongs automatically — no application
@@ -44,7 +51,7 @@ from loguru import logger
 
 from .crud import get_zapbox
 from .device_channel import register_channel, unregister_channel
-from .views_api import process_nfc_lnurlw
+from .views_api import pin_results, pin_sessions, process_nfc_lnurlw
 
 zapbox_ws_router = APIRouter(prefix="/api/v1")
 
@@ -107,12 +114,32 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
                 continue  # not JSON — ignore
             if not isinstance(msg, dict):
                 continue
-            if msg.get("event") == "lnurlw":
+            event = msg.get("event")
+            if event == "lnurlw":
                 # Spawn a task so the receive loop stays responsive while the
                 # payment (LNURLW resolve + callback, up to ~20 s) runs.
                 asyncio.create_task(
                     _handle_lnurlw_event(websocket, send_lock, device_id, msg)
                 )
+            elif event == "pin_submit":
+                # PIN entered on the touch display — same validation as the
+                # HTTPS endpoint api_nfc_pin_submit (which remains the fallback
+                # for older firmware). Pure dict work, so handled inline.
+                session_id = str(msg.get("session_id", ""))
+                pin = str(msg.get("pin", ""))
+                reply = {"event": "pin_submit_result", "session_id": session_id}
+                if session_id not in pin_sessions:
+                    reply["status"] = "ERROR"
+                    reply["detail"] = "Unknown or expired PIN session."
+                elif not pin.isdigit() or len(pin) != 4:
+                    reply["status"] = "ERROR"
+                    reply["detail"] = "PIN must be exactly 4 digits."
+                else:
+                    pin_results[session_id] = pin
+                    pin_sessions[session_id].set()
+                    reply["status"] = "OK"
+                async with send_lock:
+                    await websocket.send_text(json.dumps(reply))
             # Unknown events are ignored — room for future message types
             # without breaking older servers.
     except WebSocketDisconnect:
