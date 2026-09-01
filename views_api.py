@@ -254,16 +254,18 @@ async def api_nfc_pin_submit(
     return {"status": "OK"}
 
 
-@zapbox_api_router.post("/nfc/{device_id}")
-async def api_nfc_lnurlw(
+async def process_nfc_lnurlw(
     device_id: str,
-    pin: int = Query(...),
-    minipos_hash: str | None = Query(None),
-    data: NfcLnurlwRequest = ...,
+    pin: int,
+    lnurlw: str,
+    minipos_hash: str | None = None,
 ) -> dict:
-    """NFC Bolt Card payment endpoint.
+    """Core NFC Bolt Card payment logic.
 
-    Called by the ZapBox device when it reads a Bolt Card (NTAG424 LNURLW).
+    Shared by the HTTP endpoint below and the device WebSocket channel
+    (views_ws.py) — the WS handler converts raised HTTPExceptions into error
+    events for the device.
+
     1. Creates a Lightning invoice for the switch/pin amount — or, when
        minipos_hash is given, reuses the pending Mini-PoS invoice.
     2. Resolves the LNURLW withdraw request (k1 + callback URL).
@@ -334,7 +336,6 @@ async def api_nfc_lnurlw(
         payment_hash = payment.payment_hash
 
     # Step 2: Resolve LNURLW → k1 + callback
-    lnurlw = data.lnurlw
     if not lnurlw.lower().startswith("lnurlw://"):
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid LNURLW format.")
 
@@ -408,6 +409,24 @@ async def api_nfc_lnurlw(
         + (" (Mini-PoS)" if minipos_hash else "")
     )
     return {"status": "OK", "payment_hash": payment_hash}
+
+
+@zapbox_api_router.post("/nfc/{device_id}")
+async def api_nfc_lnurlw(
+    device_id: str,
+    pin: int = Query(...),
+    minipos_hash: str | None = Query(None),
+    data: NfcLnurlwRequest = ...,
+) -> dict:
+    """NFC Bolt Card payment endpoint (HTTPS).
+
+    Called by the ZapBox device when it reads a Bolt Card (NTAG424 LNURLW).
+    Newer firmware prefers the persistent device WebSocket channel
+    (views_ws.py) and uses this endpoint as fallback — some consumer routers
+    fail NEW TLS connections in phases while established ones keep working,
+    so a fresh HTTPS connection per tap is the least reliable transport.
+    """
+    return await process_nfc_lnurlw(device_id, pin, data.lnurlw, minipos_hash)
 
 
 @zapbox_api_router.put("/{zapbox_id}")
