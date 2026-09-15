@@ -134,7 +134,9 @@ async def lnurl_callback(
 
     message = f"{int(amount / 1000)}sats sent"
     if _switch.label:
-        message = f"{_switch.label} - {message}"
+        message = f"{_switch.label} - GPIO {pin} - {message}"
+    else:
+        message = f"GPIO {pin} - {message}"
     if switch.password and switch.password != comment:
         message = f"{message}, but password was incorrect! :("
 
