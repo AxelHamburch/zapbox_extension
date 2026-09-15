@@ -251,10 +251,10 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.6.3** *(aktuell)* | `43af813` | `feat: release v2.6.3 – prepend switch label to LUD-09 successAction message` |
-| v2.6.2 *(Basis für v2.6.3 Release Notes)* | `b24c1e8` | `feat: release v2.6.2 – accept pin_submit over the device channel` |
+| **v2.6.4** *(aktuell)* | `94a9a93` | `feat: release v2.6.4 – include GPIO pin number in successAction message` |
+| v2.6.3 *(Basis für v2.6.4 Release Notes)* | `43af813` | `feat: release v2.6.3 – prepend switch label to LUD-09 successAction message` |
 
-Für den nächsten Release: `git log 43af813..HEAD --oneline`
+Für den nächsten Release: `git log 94a9a93..HEAD --oneline`
 
 ### tagid_extension
 
