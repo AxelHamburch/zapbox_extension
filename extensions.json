@@ -107,6 +107,18 @@
       "details_link": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/config.json",
       "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.6.3.zip",
       "hash": "b4d13da28ee0e604be2f748bb973ec2825c1d2a7d80bfbf5312b7ea2b767d2c6"
+    },
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "2.6.4",
+      "min_lnbits_version": "1.4.0",
+      "short_description": "Turn things on with bitcoin – With NFC Tag, Mini-PoS and Ring-Login support for ZapBox",
+      "icon": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/static/image/icon.png",
+      "details_link": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/config.json",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.6.4.zip",
+      "hash": "7e2f67ee811b9bf97b0fca4274e8826fc3774e60ec9f01421ad68f17db76ab50"
     }
   ]
 }
