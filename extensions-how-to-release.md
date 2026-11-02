@@ -251,11 +251,12 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.6.5** *(aktuell)* | `604a015` | `feat: release v2.6.5 – specific error detail for unexpected NFC payment failures` |
-| v2.6.4 *(Basis für v2.6.5 Release Notes)* | `94a9a93` | `feat: release v2.6.4 – include GPIO pin number in successAction message` |
+| **v2.6.6** *(aktuell)* | `b70c6c9` | `feat: release v2.6.6 – NFC error detail: label on its own line, wraps on the display` |
+| v2.6.5 *(Basis für v2.6.6 Release Notes)* | `604a015` | `feat: release v2.6.5 – specific error detail for unexpected NFC payment failures` |
+| v2.6.4 | `94a9a93` | `feat: release v2.6.4 – include GPIO pin number in successAction message` |
 | v2.6.3 | `43af813` | `feat: release v2.6.3 – prepend switch label to LUD-09 successAction message` |
 
-Für den nächsten Release: `git log 604a015..HEAD --oneline`
+Für den nächsten Release: `git log b70c6c9..HEAD --oneline`
 
 ### tagid_extension
 
