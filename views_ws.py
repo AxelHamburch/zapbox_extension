@@ -72,9 +72,13 @@ async def _handle_lnurlw_event(
         reply["status"] = "ERROR"
         reply["detail"] = str(exc.detail)
     except Exception as exc:  # never let one bad tap kill the channel
-        logger.error(f"ZapBox WS: lnurlw handling failed for {device_id}: {exc}")
+        logger.exception(f"ZapBox WS: lnurlw handling failed for {device_id}: {exc}")
         reply["status"] = "ERROR"
-        reply["detail"] = "Internal error."
+        # Name the failing exception instead of a bare "Internal error." so the
+        # device error screen shows what actually went wrong.
+        reason = str(exc).strip().splitlines()[0][:80] if str(exc).strip() else ""
+        reply["detail"] = f"Internal error ({type(exc).__name__}"
+        reply["detail"] += f": {reason})" if reason else ")"
     try:
         async with send_lock:
             await websocket.send_text(json.dumps(reply))
