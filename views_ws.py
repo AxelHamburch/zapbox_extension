@@ -76,9 +76,12 @@ async def _handle_lnurlw_event(
         reply["status"] = "ERROR"
         # Name the failing exception instead of a bare "Internal error." so the
         # device error screen shows what actually went wrong.
-        reason = str(exc).strip().splitlines()[0][:80] if str(exc).strip() else ""
-        reply["detail"] = f"Internal error ({type(exc).__name__}"
-        reply["detail"] += f": {reason})" if reason else ")"
+        # The device splits on the first ": " and gives the label its own line,
+        # then word-wraps the rest (max. 4 lines of ~25 chars on the touch display).
+        reason = str(exc).strip().splitlines()[0][:60] if str(exc).strip() else ""
+        reply["detail"] = f"Internal error: {type(exc).__name__}"
+        if reason:
+            reply["detail"] += f" - {reason}"
     try:
         async with send_lock:
             await websocket.send_text(json.dumps(reply))
