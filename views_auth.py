@@ -16,13 +16,14 @@ import time
 from http import HTTPStatus
 
 from embit import ec
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from lnbits.core.models import User
-from .device_channel import push_to_device
+from .device_channel import push_to_device, spawn
 from lnbits.decorators import check_user_exists
 from lnurl import encode as lnurl_encode
 from loguru import logger
 
+from .device_auth import get_authenticated_zapbox
 from .crud import (
     create_auth_key,
     delete_auth_key,
@@ -41,10 +42,15 @@ K1_TTL = 120          # seconds — auth challenge lifetime (single use)
 TEACH_TTL = 300       # seconds — open teach session lifetime (5 min)
 MAX_TEACH_ATTEMPTS = 3
 DEFAULT_AUTH_DURATION = 3000  # ms
+MAX_AUTH_DURATION = 600_000  # ms (10 min)
+MAX_K1_CACHE = 1000     # open auth challenges kept in memory
 
 # In-memory stores (analogous to pin_sessions in views_api.py).
 # auth_k1_cache: k1 hex -> (device_id, pin, duration, expiry_ts). Single use.
 auth_k1_cache: dict[str, tuple[str, int, int, float]] = {}
+# auth_k1_action: k1 hex -> "register" | "auth" as issued. A wallet cannot
+# turn an auth challenge into a register by changing the action parameter.
+auth_k1_action: dict[str, str] = {}
 # teach_sessions: device_id -> expiry_ts. A register callback is only accepted
 # while an open session exists for the device.
 teach_sessions: dict[str, float] = {}
@@ -64,6 +70,9 @@ def _purge_k1() -> None:
     now = _now()
     for k1 in [k for k, v in auth_k1_cache.items() if v[3] < now]:
         auth_k1_cache.pop(k1, None)
+        auth_k1_action.pop(k1, None)
+    for k1 in [k for k in auth_k1_action if k not in auth_k1_cache]:
+        auth_k1_action.pop(k1, None)
 
 
 def _teach_open(device_id: str) -> bool:
@@ -121,10 +130,9 @@ async def _teach_timeout(device_id: str, expiry: float) -> None:
 async def api_auth_teach_start(
     device_id: str = Query(...),
     pin: str = Query(...),
+    x_device_token: str | None = Header(None),
 ) -> dict:
-    zapbox = await get_zapbox(device_id)
-    if not zapbox:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Device not found.")
+    zapbox = await get_authenticated_zapbox(device_id, x_device_token)
     if not zapbox.auth_enabled:
         return {"status": "ERROR", "reason": "disabled"}
     if not zapbox.touch_enabled:
@@ -132,7 +140,7 @@ async def api_auth_teach_start(
     if not zapbox.teach_pin:
         return {"status": "ERROR", "reason": "no_teach_pin"}
 
-    if pin != zapbox.teach_pin:
+    if not secrets.compare_digest(pin.encode(), zapbox.teach_pin.encode()):
         attempts = teach_attempts.get(device_id, 0) + 1
         teach_attempts[device_id] = attempts
         if attempts >= MAX_TEACH_ATTEMPTS:
@@ -151,13 +159,17 @@ async def api_auth_teach_start(
     teach_attempts.pop(device_id, None)
     expiry = _now() + TEACH_TTL
     teach_sessions[device_id] = expiry
-    asyncio.create_task(_teach_timeout(device_id, expiry))
+    spawn(_teach_timeout(device_id, expiry))
     logger.info(f"LNURL-auth teach session opened: device={device_id}")
     return {"status": "OK", "ttl": TEACH_TTL}
 
 
 @zapbox_auth_router.post("/auth/teach/stop")
-async def api_auth_teach_stop(device_id: str = Query(...)) -> dict:
+async def api_auth_teach_stop(
+    device_id: str = Query(...),
+    x_device_token: str | None = Header(None),
+) -> dict:
+    await get_authenticated_zapbox(device_id, x_device_token)
     teach_sessions.pop(device_id, None)
     return {"status": "OK"}
 
@@ -171,16 +183,17 @@ async def api_auth_teach_stop(device_id: str = Query(...)) -> dict:
 async def api_auth_lnurl(
     request: Request,
     device_id: str,
-    pin: int = Query(...),  # relay GPIO supplied by the device (its primary channel)
-    duration: int = Query(DEFAULT_AUTH_DURATION),
+    pin: int = Query(..., ge=0, le=99),  # relay GPIO supplied by the device
+    duration: int = Query(DEFAULT_AUTH_DURATION, ge=1, le=MAX_AUTH_DURATION),
+    x_device_token: str | None = Header(None),
 ) -> dict:
     """Device asks for an auth LNURL. Creates+caches a fresh k1 and returns the
     bech32 LNURL. action=register while a teach session is open, else auth.
     The pin/duration the device passes here are cached with the k1 and used as
     the relay trigger on a successful auth callback."""
-    zapbox = await get_zapbox(device_id)
-    if not zapbox:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Device not found.")
+    # Device token required: otherwise anyone could fetch a k1 while a teach
+    # session is open and enrol their own key remotely.
+    zapbox = await get_authenticated_zapbox(device_id, x_device_token)
     if zapbox.disabled:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN, detail=f"ZapBox {device_id} is disabled"
@@ -191,10 +204,15 @@ async def api_auth_lnurl(
         )
 
     _purge_k1()
+    if len(auth_k1_cache) >= MAX_K1_CACHE:
+        raise HTTPException(
+            status_code=HTTPStatus.TOO_MANY_REQUESTS, detail="Too many open challenges."
+        )
     k1 = secrets.token_hex(32)
     auth_k1_cache[k1] = (device_id, pin, duration, _now() + K1_TTL)
 
     action = "register" if _teach_open(device_id) else "auth"
+    auth_k1_action[k1] = action
     cb = str(request.url_for("zapbox.auth_cb", device_id=device_id))
     url = f"{cb}?tag=login&k1={k1}&action={action}"
     # NOTE: lnurl.encode(url) returns an Lnurl whose str() is the *plain URL*;
@@ -232,6 +250,8 @@ async def api_auth_cb(
         return {"status": "ERROR", "reason": "Invalid signature"}
 
     if action == "register":
+        if auth_k1_action.get(k1) != "register":
+            return {"status": "ERROR", "reason": "Not a register challenge"}
         if not _teach_open(device_id):
             return {"status": "ERROR", "reason": "No open teach session"}
         existing = await get_auth_key_by_pubkey(device_id, key)

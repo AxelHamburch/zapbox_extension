@@ -167,3 +167,43 @@ async def m009_nfc_identities(db):
             await db.execute(stmt)
         except Exception:
             pass
+
+
+async def _columns(db, table: str) -> set[str]:
+    # Works on SQLite and Postgres, also for empty tables (column metadata only).
+    result = await db.execute(f"SELECT * FROM {table} LIMIT 1")
+    return set(result.keys())
+
+
+async def m010_device_token(db):
+    """
+    v2.7.0 security update:
+    - device_token: shared secret between extension and firmware. Every
+      device-side call (device channel, NFC, Mini-PoS, teach, auth) must send
+      it as X-Device-Token. Existing ZapBoxes get a fresh token here; the
+      owner copies the new device string (wss://…?token=…) into the device.
+    - ring_login_pin_required: Ring-Login only succeeds when TagID confirmed
+      the card PIN.
+    Columns are checked before adding (a failed ALTER aborts the transaction
+    on Postgres).
+    """
+    import secrets
+
+    columns = await _columns(db, "zapbox.switch")
+    if "device_token" not in columns:
+        await db.execute(
+            "ALTER TABLE zapbox.switch ADD COLUMN device_token TEXT NOT NULL DEFAULT ''"
+        )
+    if "ring_login_pin_required" not in columns:
+        await db.execute(
+            "ALTER TABLE zapbox.switch ADD COLUMN ring_login_pin_required "
+            "BOOLEAN NOT NULL DEFAULT FALSE"
+        )
+    rows = await db.fetchall(
+        "SELECT id FROM zapbox.switch WHERE device_token IS NULL OR device_token = ''"
+    )
+    for row in rows:
+        await db.execute(
+            "UPDATE zapbox.switch SET device_token = :token WHERE id = :id",
+            {"token": secrets.token_hex(16), "id": row["id"]},
+        )

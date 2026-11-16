@@ -428,6 +428,12 @@
                   <q-tooltip>Reload NFC cards</q-tooltip>
                 </q-btn>
               </div>
+              <q-toggle
+                v-model="formDialog.data.ring_login_pin_required"
+                color="primary"
+                :label="formDialog.data.ring_login_pin_required ? 'Ring-Login only with PIN (checked by TagID)' : 'Ring-Login without PIN allowed'"
+                class="q-mb-sm"
+              ><q-tooltip>When on, a card only opens if TagID confirmed its PIN. Cards without a PIN in TagID are rejected. Requires TagID v2.2.0+.</q-tooltip></q-toggle>
               <q-input
                 filled dense
                 v-model.trim="formDialog.data.tagid_base_url"
@@ -467,6 +473,16 @@
               </q-list>
 
             </div><!-- /auth_enabled -->
+          </div>
+          <div v-if="formDialog.data.id" class="q-mt-md">
+            <div class="text-subtitle2">Device token</div>
+            <div class="text-caption text-grey q-mb-sm">
+              Secret shared with the device. It is part of the device string
+              (copy button in the list) and must be entered in the Web Installer.
+              Since v2.7.0 the device needs it for every call.
+            </div>
+            <q-btn flat dense size="sm" icon="perm_data_setting" color="primary" label="Copy device string" @click="copyDeviceString(formDialog.data.id)"></q-btn>
+            <q-btn flat dense size="sm" icon="autorenew" color="grey" label="New token" class="q-ml-sm" @click="regenerateDeviceToken(formDialog.data.id)"></q-btn>
           </div>
           <div class="row q-mt-lg">
             <q-btn

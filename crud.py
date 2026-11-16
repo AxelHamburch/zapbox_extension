@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timezone
 
 from lnbits.db import Database
@@ -23,16 +24,15 @@ async def create_zapbox(
     zapbox_id = urlsafe_short_hash()
     device = ZapBox(
         id=zapbox_id,
-        title=data.title,
-        wallet=data.wallet,
-        currency=data.currency,
-        switches=data.switches,
-        password=data.password,
-        disabled=data.disabled,
-        disposable=data.disposable,
+        device_token=new_device_token(),
+        **data.model_dump(),
     )
     await db.insert("zapbox.switch", device)
     return device
+
+
+def new_device_token() -> str:
+    return secrets.token_hex(16)
 
 
 async def update_zapbox(device: ZapBox) -> ZapBox:

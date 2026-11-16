@@ -59,3 +59,16 @@ async def push_to_device(device_id: str, text: str) -> None:
             )
             unregister_channel(device_id, websocket)
     await websocket_updater(device_id, text)
+
+
+# Strong references for fire-and-forget tasks (PIN loops, tap handlers, teach
+# timeouts). asyncio only keeps weak references, so an unreferenced task can
+# be garbage-collected while it is still running.
+_background_tasks: set[asyncio.Task] = set()
+
+
+def spawn(coro) -> asyncio.Task:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task

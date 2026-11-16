@@ -3,7 +3,6 @@ import math
 
 from fastapi import APIRouter, Query, Request
 from lnbits.core.services import create_invoice, websocket_manager
-from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from lnurl import (
     CallbackUrl,
     InvalidLnurl,
@@ -16,15 +15,28 @@ from lnurl import (
     MessageAction,
     MilliSatoshi,
 )
-from pydantic import parse_obj_as
+from pydantic import TypeAdapter, ValidationError
 
 from .crud import create_switch_payment, get_zapbox
 from .device_channel import has_device_channel
+from .pricing import amount_accepted, max_sendable_msat, switch_price_msat
 
 zapbox_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 
+# Both routes are called by Lightning wallets. The opt-in lets wallets on the
+# same LNbits instance pay a ZapBox (LNbits >= 1.7.0 blocks self-requests
+# otherwise and dispatches opted-in GET routes in-process).
+LOCAL_LNURL = {"x-lnbits-local-lnurl": True}
 
-@zapbox_lnurl_router.get("/{zapbox_id}")
+
+def _parse_pin(pin: str) -> int | None:
+    try:
+        return int(pin)
+    except (TypeError, ValueError):
+        return None
+
+
+@zapbox_lnurl_router.get("/{zapbox_id}", openapi_extra=LOCAL_LNURL)
 async def lnurl_params(
     request: Request, zapbox_id: str, pin: str
 ) -> LnurlPayResponse | LnurlErrorResponse:
@@ -38,18 +50,12 @@ async def lnurl_params(
             reason=f"ZapBox {zapbox_id} is disabled"
         )
 
-    _switch = next((_s for _s in switch.switches if _s.pin == int(pin)), None)
+    pin_int = _parse_pin(pin)
+    _switch = next((_s for _s in switch.switches if _s.pin == pin_int), None)
     if not _switch:
         return LnurlErrorResponse(reason=f"Switch with pin {pin} not found.")
 
-    price_msat = int(
-        (
-            await fiat_amount_as_satoshis(float(_switch.amount), switch.currency)
-            if switch.currency != "sat"
-            else float(_switch.amount)
-        )
-        * 1000
-    )
+    price_msat = await switch_price_msat(switch, _switch)
     if price_msat < 1000:
         return LnurlErrorResponse(
             reason=(
@@ -57,17 +63,15 @@ async def lnurl_params(
                 f"1 satoshi — please use whole numbers for satoshis or fiat currency."
             )
         )
-    # let the max be 100x the min if variable pricing is enabled
-    max_sendable = price_msat * 100 if _switch.variable else price_msat
-    url = request.url_for("zapbox.lnurl_cb", switch_id=zapbox_id, pin=pin)
+    url = request.url_for("zapbox.lnurl_cb", switch_id=zapbox_id, pin=pin_int)
     try:
-        callback_url = parse_obj_as(CallbackUrl, str(url))
-    except InvalidLnurl:
+        callback_url = TypeAdapter(CallbackUrl).validate_python(str(url))
+    except (InvalidLnurl, ValidationError):
         return LnurlErrorResponse(reason=f"Invalid LNURL callback URL: {url!s}")
     res = LnurlPayResponse(
         callback=callback_url,
         minSendable=MilliSatoshi(price_msat),
-        maxSendable=MilliSatoshi(max_sendable),
+        maxSendable=MilliSatoshi(max_sendable_msat(price_msat, _switch)),
         metadata=LnurlPayMetadata(json.dumps([["text/plain", switch.title]])),
     )
     if _switch.comment is True:
@@ -75,7 +79,9 @@ async def lnurl_params(
     return res
 
 
-@zapbox_lnurl_router.get("/cb/{switch_id}/{pin}", name="zapbox.lnurl_cb")
+@zapbox_lnurl_router.get(
+    "/cb/{switch_id}/{pin}", name="zapbox.lnurl_cb", openapi_extra=LOCAL_LNURL
+)
 async def lnurl_callback(
     switch_id: str,
     pin: int,
@@ -95,6 +101,16 @@ async def lnurl_callback(
     _switch = next((_s for _s in switch.switches if _s.pin == int(pin)), None)
     if not _switch:
         return LnurlErrorResponse(reason=f"Switch with pin {pin} not found.")
+
+    # The price advertised as minSendable/maxSendable is only a hint for the
+    # wallet. Enforce it here, otherwise a direct callback with amount=1000
+    # triggers a fixed-price switch for 1 sat.
+    price_msat = await switch_price_msat(switch, _switch)
+    if price_msat < 1000 or not amount_accepted(switch, _switch, price_msat, amount):
+        max_msat = max_sendable_msat(price_msat, _switch)
+        return LnurlErrorResponse(
+            reason=f"Amount must be between {price_msat} and {max_msat} msat."
+        )
 
     # A device is reachable via the core WebSocket OR the persistent device
     # channel (views_ws.py). Newer firmware deliberately keeps only the device
@@ -141,7 +157,9 @@ async def lnurl_callback(
         message = f"{message}, but password was incorrect! :("
 
     return LnurlPayActionResponse(
-        pr=parse_obj_as(LightningInvoice, payment.bolt11),
-        successAction=MessageAction(message=parse_obj_as(Max144Str, message)),
+        pr=TypeAdapter(LightningInvoice).validate_python(payment.bolt11),
+        successAction=MessageAction(
+            message=TypeAdapter(Max144Str).validate_python(message[:144])
+        ),
         disposable=switch.disposable,
     )

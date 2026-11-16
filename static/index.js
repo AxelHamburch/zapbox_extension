@@ -106,7 +106,8 @@ window.PageZapbox = {
         touch_enabled: true,
         auth_enabled: false,
         tagid_base_url: null,
-        tagid_api_key: null
+        tagid_api_key: null,
+        ring_login_pin_required: false
       }
       this.authKeys = []
       this.nfcIdentities = []
@@ -318,8 +319,34 @@ window.PageZapbox = {
         })
     },
     copyDeviceString(zapboxId) {
-      const loc = `wss://${window.location.host}/api/v1/ws/${zapboxId}`
+      // v2.7.0: the device token travels inside the device string. The
+      // firmware stores it and sends it as X-Device-Token header, it never
+      // connects with the token in the URL.
+      const zapbox = _.findWhere(this.zapboxes, {id: zapboxId})
+      const token = zapbox && zapbox.device_token ? zapbox.device_token : ''
+      const loc = `wss://${window.location.host}/api/v1/ws/${zapboxId}?token=${token}`
       this.utils.copyText(loc, 'Device string copied to clipboard!')
+    },
+    regenerateDeviceToken(zapboxId) {
+      LNbits.utils
+        .confirmDialog(
+          'Create a new device token? The device stops working until you copy the new device string into it (Web Installer).'
+        )
+        .onOk(() => {
+          LNbits.api
+            .request('PUT', `${this.apiUrl}/${zapboxId}/device_token`)
+            .then(response => {
+              const index = this.zapboxes.findIndex(
+                obj => obj.id === response.data.id
+              )
+              this.zapboxes[index] = response.data
+              if (this.formDialog.data.id === zapboxId) {
+                this.formDialog.data.device_token = response.data.device_token
+              }
+              this.copyDeviceString(zapboxId)
+            })
+            .catch(LNbits.utils.notifyApiError)
+        })
     },
     exportCSV() {
       LNbits.utils.exportCSV(

@@ -11,3 +11,30 @@ Check out [lnbits.com](https://lnbits.com) & join the Telegram support group [Ma
 `Original authors: Ben Arc, DNI, pieterjm` / `ZapBox extension: AxelHamburch`
 
 Extension manifest source for LNbits: [https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/extensions.json](https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/extensions.json)
+
+---
+
+## v2.7.0 – Security update for LNbits 1.7.0 (breaking)
+
+Requires **LNbits 1.7.0** or newer and **ZapBox firmware with device token support**.
+
+> ⚠️ **Breaking change for security reasons:** every ZapBox now has a secret **device token**. Devices with older firmware stop working after this update until they get the new firmware **and** the new device string (copy button in the ZapBox list, paste it into the Web Installer). LNbits 1.7.0 updates extensions automatically, so plan the firmware update together with the LNbits upgrade.
+
+**Device token**
+
+- Created automatically for every ZapBox (existing ones get one during the update). It is part of the device string: `wss://<host>/api/v1/ws/<id>?token=<token>`.
+- The firmware sends it as `X-Device-Token` header on every device call: device channel, NFC payments, PIN entry, Mini-PoS, Ring-Login, LNURL-auth and teach mode. It is never sent in a URL.
+- "New token" in the ZapBox editor creates a new token; the old one stops working immediately.
+
+**Security fixes**
+
+- Relay could be triggered without paying the switch: invoices with a forged `extra` field in another wallet, Mini-PoS invoices for foreign devices, and direct LNURL callbacks with 1 sat for a fixed-price switch. Settlement now requires the payment to land in the ZapBox wallet with the full amount, Mini-PoS needs the invoice key of the ZapBox owner's account, and the LNURL callback enforces the price.
+- A ZapBox could be taken over by another user via `PUT /zapbox/api/v1/{id}`.
+- NFC payments and Ring-Login requests to TagID could be pointed at internal addresses (SSRF). Card requests now go through LNbits' protected LNURL client; TagID on the same instance is called in-process.
+- The device channel, teach mode and Ring-Login could be used by anyone who knew the (public) device ID.
+- New option **"Ring-Login only with PIN"**: the card only opens if TagID (v2.2.0+) confirmed its PIN.
+- Bolt Cards with a used-up daily budget are rejected with "Card limit reached" before an invoice is created.
+
+**Other changes**
+
+- Pydantic 2 / lnurl 2 (LNbits 1.7.0), payments from wallets on the same instance work again (local LNURL opt-in).

@@ -35,6 +35,13 @@ through push_to_device() (device_channel.py): over this channel when it is
 connected, core WebSocket otherwise. The HTTPS pin_submit endpoint remains as
 fallback for older firmware.
 
+Authentication (v2.7.0): the handshake must carry the header
+  X-Device-Token: <device token of this ZapBox>
+otherwise the server accepts and immediately closes with code 4401
+("Device token invalid"). The token reaches the device inside the device
+settings string (wss://<host>/api/v1/ws/<id>?token=<token>); the firmware
+strips it from the URL before connecting.
+
 Keepalive is protocol-level: the device sends WebSocket pings
 (enableHeartbeat), the server answers pongs automatically — no application
 code needed here.
@@ -50,8 +57,9 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from .crud import get_zapbox
-from .device_channel import register_channel, unregister_channel
-from .views_api import pin_results, pin_sessions, process_nfc_lnurlw
+from .device_auth import DEVICE_TOKEN_HEADER, WS_CLOSE_INVALID_TOKEN, device_token_ok
+from .device_channel import register_channel, spawn, unregister_channel
+from .views_api import process_nfc_lnurlw, submit_pin
 
 zapbox_ws_router = APIRouter(prefix="/api/v1")
 
@@ -105,6 +113,15 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
         await websocket.close(code=4404, reason="Device not found")
         return
 
+    # v2.7.0: only the real device (knows the device token) may open the
+    # channel. Without this anyone with the public device ID could replace the
+    # channel, swallow relay triggers and see PIN sessions.
+    if not device_token_ok(zapbox, websocket.headers.get(DEVICE_TOKEN_HEADER)):
+        logger.warning(f"ZapBox WS: rejected device channel without valid token: {device_id}")
+        await websocket.accept()
+        await websocket.close(code=WS_CLOSE_INVALID_TOKEN, reason="Device token invalid")
+        return
+
     await websocket.accept()
     logger.info(f"ZapBox WS: device channel connected: {device_id}")
     # Register so push_to_device() routes relay triggers and events over this
@@ -125,7 +142,7 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
             if event == "lnurlw":
                 # Spawn a task so the receive loop stays responsive while the
                 # payment (LNURLW resolve + callback, up to ~20 s) runs.
-                asyncio.create_task(
+                spawn(
                     _handle_lnurlw_event(websocket, send_lock, device_id, msg)
                 )
             elif event == "pin_submit":
@@ -135,15 +152,11 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
                 session_id = str(msg.get("session_id", ""))
                 pin = str(msg.get("pin", ""))
                 reply = {"event": "pin_submit_result", "session_id": session_id}
-                if session_id not in pin_sessions:
+                error = submit_pin(session_id, pin, device_id)
+                if error:
                     reply["status"] = "ERROR"
-                    reply["detail"] = "Unknown or expired PIN session."
-                elif not pin.isdigit() or len(pin) != 4:
-                    reply["status"] = "ERROR"
-                    reply["detail"] = "PIN must be exactly 4 digits."
+                    reply["detail"] = error
                 else:
-                    pin_results[session_id] = pin
-                    pin_sessions[session_id].set()
                     reply["status"] = "OK"
                 async with send_lock:
                     await websocket.send_text(json.dumps(reply))
