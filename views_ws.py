@@ -37,8 +37,9 @@ fallback for older firmware.
 
 Authentication (v2.7.0): the handshake must carry the header
   X-Device-Token: <device token of this ZapBox>
-otherwise the server accepts and immediately closes with code 4401
-("Device token invalid"). The token reaches the device inside the device
+otherwise the server accepts, sends {"event": "device_token_invalid"} and
+immediately closes with code 4401 ("Device token invalid"). The firmware then
+stops reconnecting the channel and shows a notice. The token reaches the device inside the device
 settings string (wss://<host>/api/v1/ws/<id>?token=<token>); the firmware
 strips it from the URL before connecting.
 
@@ -57,7 +58,12 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from .crud import get_zapbox
-from .device_auth import DEVICE_TOKEN_HEADER, WS_CLOSE_INVALID_TOKEN, device_token_ok
+from .device_auth import (
+    DEVICE_TOKEN_HEADER,
+    TOKEN_INVALID_EVENT,
+    WS_CLOSE_INVALID_TOKEN,
+    device_token_ok,
+)
 from .device_channel import register_channel, spawn, unregister_channel
 from .views_api import process_nfc_lnurlw, submit_pin
 
@@ -119,6 +125,7 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
     if not device_token_ok(zapbox, websocket.headers.get(DEVICE_TOKEN_HEADER)):
         logger.warning(f"ZapBox WS: rejected device channel without valid token: {device_id}")
         await websocket.accept()
+        await websocket.send_text(json.dumps({"event": TOKEN_INVALID_EVENT}))
         await websocket.close(code=WS_CLOSE_INVALID_TOKEN, reason="Device token invalid")
         return
 

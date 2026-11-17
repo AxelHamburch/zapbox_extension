@@ -489,3 +489,63 @@ async def test_ring_login_pin_required(client, owner, monkeypatch):
         url, params={**params, "external_id": "../x"}, headers=token_header(zapbox)
     )
     assert bad_tap.status_code == 400
+
+
+# --------------------------------------------------------------------------- #
+# Device channel: token rejection is signalled to the firmware
+# --------------------------------------------------------------------------- #
+
+
+class FakeSocket:
+    def __init__(self, headers, incoming=()):
+        from starlette.datastructures import Headers
+
+        self.headers = Headers(headers)
+        self.sent: list[str] = []
+        self.closed: tuple[int, str] | None = None
+        self.accepted = False
+        self._incoming = list(incoming)
+
+    async def accept(self):
+        self.accepted = True
+
+    async def send_text(self, text):
+        self.sent.append(text)
+
+    async def close(self, code=1000, reason=""):
+        self.closed = (code, reason)
+
+    async def receive_text(self):
+        from fastapi import WebSocketDisconnect
+
+        if self._incoming:
+            return self._incoming.pop(0)
+        raise WebSocketDisconnect()
+
+
+async def test_device_channel_rejects_bad_token_with_event(owner):
+    import json
+
+    from .. import views_ws
+    from ..device_channel import has_device_channel
+
+    zapbox = await make_zapbox(owner)
+    for headers in ({}, {"x-device-token": "wrong"}):
+        socket = FakeSocket(headers)
+        await views_ws.websocket_nfc_channel(socket, zapbox.id)
+        assert socket.accepted
+        assert [json.loads(m) for m in socket.sent] == [
+            {"event": "device_token_invalid"}
+        ]
+        assert socket.closed and socket.closed[0] == 4401
+        assert not has_device_channel(zapbox.id)
+
+
+async def test_device_channel_accepts_valid_token(owner):
+    from .. import views_ws
+
+    zapbox = await make_zapbox(owner)
+    socket = FakeSocket({"x-device-token": zapbox.device_token})
+    await views_ws.websocket_nfc_channel(socket, zapbox.id)
+    assert socket.accepted and socket.closed is None
+    assert socket.sent == []

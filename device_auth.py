@@ -24,7 +24,13 @@ from .models import ZapBox
 DEVICE_TOKEN_HEADER = "X-Device-Token"
 # Close code for the device WebSocket channel when the token is missing/wrong.
 WS_CLOSE_INVALID_TOKEN = 4401
-INVALID_TOKEN_DETAIL = "Device token invalid. Update the device settings string."
+# Shown on the device display (NFC error screen): the part before ": " gets its
+# own line, the rest wraps. Keep it short.
+INVALID_TOKEN_DETAIL = "Token invalid: update device string"
+# Event sent over the device channel right before it is closed with 4401, so
+# the firmware can tell a rejected token from a network problem, stop
+# reconnecting and tell the user.
+TOKEN_INVALID_EVENT = "device_token_invalid"
 
 
 def device_token_ok(zapbox: ZapBox, token: str | None) -> bool:
