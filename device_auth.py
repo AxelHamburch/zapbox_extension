@@ -31,6 +31,9 @@ INVALID_TOKEN_DETAIL = "Token invalid: update device string"
 # the firmware can tell a rejected token from a network problem, stop
 # reconnecting and tell the user.
 TOKEN_INVALID_EVENT = "device_token_invalid"
+# Sent once after a successful handshake; the firmware switches to
+# single-connection mode (drops its core WebSocket) only on this event.
+CHANNEL_READY_EVENT = "device_channel_ready"
 
 
 def device_token_ok(zapbox: ZapBox, token: str | None) -> bool:

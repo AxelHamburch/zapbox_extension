@@ -548,4 +548,4 @@ async def test_device_channel_accepts_valid_token(owner):
     socket = FakeSocket({"x-device-token": zapbox.device_token})
     await views_ws.websocket_nfc_channel(socket, zapbox.id)
     assert socket.accepted and socket.closed is None
-    assert socket.sent == []
+    assert socket.sent == ['{"event": "device_channel_ready"}']

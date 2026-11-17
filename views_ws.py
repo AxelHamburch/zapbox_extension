@@ -39,9 +39,14 @@ Authentication (v2.7.0): the handshake must carry the header
   X-Device-Token: <device token of this ZapBox>
 otherwise the server accepts, sends {"event": "device_token_invalid"} and
 immediately closes with code 4401 ("Device token invalid"). The firmware then
-stops reconnecting the channel and shows a notice. The token reaches the device inside the device
-settings string (wss://<host>/api/v1/ws/<id>?token=<token>); the firmware
-strips it from the URL before connecting.
+stops reconnecting the channel and shows a notice. The token reaches the
+device inside the device settings string
+(wss://<host>/api/v1/ws/<id>?token=<token>); the firmware strips it from
+the URL before connecting.
+
+With a valid token the server sends {"event": "device_channel_ready"} once the
+channel is registered. The firmware switches to single-connection mode (drops
+the core WebSocket) only on that event, never on the bare connect.
 
 Keepalive is protocol-level: the device sends WebSocket pings
 (enableHeartbeat), the server answers pongs automatically — no application
@@ -60,6 +65,7 @@ from loguru import logger
 from .crud import get_zapbox
 from .device_auth import (
     DEVICE_TOKEN_HEADER,
+    CHANNEL_READY_EVENT,
     TOKEN_INVALID_EVENT,
     WS_CLOSE_INVALID_TOKEN,
     device_token_ok,
@@ -137,6 +143,11 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
     # not interleave frames on the socket.
     send_lock = register_channel(device_id, websocket)
     try:
+        # Confirm the channel only now (token checked, channel registered). The
+        # firmware releases its core WebSocket on this event, not on the bare
+        # connect: a rejected channel never takes the core WebSocket down.
+        async with send_lock:
+            await websocket.send_text(json.dumps({"event": CHANNEL_READY_EVENT}))
         while True:
             raw = await websocket.receive_text()
             try:
