@@ -62,7 +62,7 @@ import json
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 
-from .crud import get_zapbox
+from .crud import enable_signed_triggers, get_zapbox
 from .device_auth import (
     DEVICE_TOKEN_HEADER,
     CHANNEL_READY_EVENT,
@@ -141,6 +141,9 @@ async def websocket_nfc_channel(websocket: WebSocket, device_id: str) -> None:
     # socket instead of the (possibly half-open) core WebSocket. The returned
     # lock serializes writes: replies from spawned tasks and pushed events must
     # not interleave frames on the socket.
+    # The device proved it knows its token: firmware with signed-trigger
+    # support. Core-WebSocket fallback triggers are signed from now on (Z6).
+    await enable_signed_triggers(device_id)
     send_lock = register_channel(device_id, websocket)
     try:
         # Confirm the channel only now (token checked, channel registered). The

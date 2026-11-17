@@ -88,6 +88,9 @@ class ZapBox(BaseModel):
 class ZapBoxPublic(BaseModel):
     title: str
     switches: list[Switch]
+    # Last relay trigger counter (Z6). Not secret: firmware uses it at boot to
+    # reject replays of older signed triggers seen on the core WebSocket.
+    trigger_counter: int = 0
 
 
 class MiniPosInvoiceRequest(BaseModel):

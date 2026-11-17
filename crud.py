@@ -284,3 +284,49 @@ async def get_switch_payments(
         """,
         model=ZapBoxPayment,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Signed relay triggers on the core WebSocket (Z6)
+# --------------------------------------------------------------------------- #
+
+
+async def next_trigger_counter(zapbox_id: str) -> int | None:
+    """Atomically increment and return the trigger counter of a ZapBox."""
+    from sqlalchemy import text
+
+    async with db.connect() as conn:
+        async with conn.conn.begin():
+            await conn.conn.execute(
+                text(
+                    "UPDATE zapbox.switch SET trigger_counter = trigger_counter + 1 "
+                    "WHERE id = :id"
+                ),
+                {"id": zapbox_id},
+            )
+            result = await conn.conn.execute(
+                text("SELECT trigger_counter FROM zapbox.switch WHERE id = :id"),
+                {"id": zapbox_id},
+            )
+            value = result.scalar()
+    return int(value) if value is not None else None
+
+
+async def get_trigger_state(zapbox_id: str) -> tuple[int, bool]:
+    row = await db.fetchone(
+        "SELECT trigger_counter, signed_triggers FROM zapbox.switch WHERE id = :id",
+        {"id": zapbox_id},
+    )
+    if not row:
+        return 0, False
+    return int(row["trigger_counter"] or 0), bool(row["signed_triggers"])
+
+
+async def enable_signed_triggers(zapbox_id: str) -> None:
+    """The device proved it knows its token (= firmware with signed trigger
+    support): from now on core-WebSocket triggers are signed."""
+    await db.execute(
+        "UPDATE zapbox.switch SET signed_triggers = TRUE "
+        "WHERE id = :id AND signed_triggers = FALSE",
+        {"id": zapbox_id},
+    )

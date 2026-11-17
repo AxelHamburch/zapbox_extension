@@ -13,6 +13,10 @@ push_to_device() falls back to the core WebSocket, so nothing existing breaks.
 """
 
 import asyncio
+import hashlib
+import hmac
+import json
+import re
 
 from fastapi import WebSocket
 from lnbits.core.services import websocket_updater
@@ -58,7 +62,50 @@ async def push_to_device(device_id: str, text: str) -> None:
                 f"({exc}) — falling back to core WebSocket"
             )
             unregister_channel(device_id, websocket)
-    await websocket_updater(device_id, text)
+    await websocket_updater(device_id, await _core_ws_payload(device_id, text))
+
+
+# Relay trigger as sent to the firmware: "<pin>-<duration>[-<comment>]".
+_TRIGGER_RE = re.compile(r"^\d+-\d+(-.*)?$", re.DOTALL)
+
+
+def sign_trigger(token: str, device_id: str, counter: int, data: str) -> str:
+    message = f"{device_id}|{counter}|{data}".encode()
+    return hmac.new(token.encode(), message, hashlib.sha256).hexdigest()
+
+
+async def _core_ws_payload(device_id: str, text: str) -> str:
+    """Wrap relay triggers for the core WebSocket in a signed envelope (Z6).
+
+    LNbits core lets anyone push text into /api/v1/ws/<id> without
+    authentication (GHSA-wqxg-3j7v-2v3c), and the device ID is public. Firmware
+    with device token support therefore only accepts
+        {"event": "trigger", "data": "4-2000", "ctr": 17, "sig": "<hmac>"}
+    on the core WebSocket: sig = HMAC-SHA256(device token,
+    "<device id>|<ctr>|<data>"), ctr strictly increasing (anyone can listen on
+    the core WebSocket, so replays must fail). Older firmware never proved it
+    has a token and keeps getting the plain trigger. Non-trigger events (PIN,
+    teach, ...) stay plain: forging them cannot switch the relay.
+    """
+    if not _TRIGGER_RE.match(text):
+        return text
+    from .crud import get_trigger_state, get_zapbox, next_trigger_counter
+
+    _, signed = await get_trigger_state(device_id)
+    if not signed:
+        return text
+    zapbox = await get_zapbox(device_id)
+    counter = await next_trigger_counter(device_id)
+    if not zapbox or not zapbox.device_token or counter is None:
+        return text
+    return json.dumps(
+        {
+            "event": "trigger",
+            "data": text,
+            "ctr": counter,
+            "sig": sign_trigger(zapbox.device_token, device_id, counter, text),
+        }
+    )
 
 
 # Strong references for fire-and-forget tasks (PIN loops, tap handlers, teach

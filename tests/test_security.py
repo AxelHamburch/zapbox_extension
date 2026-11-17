@@ -549,3 +549,85 @@ async def test_device_channel_accepts_valid_token(owner):
     await views_ws.websocket_nfc_channel(socket, zapbox.id)
     assert socket.accepted and socket.closed is None
     assert socket.sent == ['{"event": "device_channel_ready"}']
+
+
+# --------------------------------------------------------------------------- #
+# Z6 - signed relay triggers on the core WebSocket fallback
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def core_ws(monkeypatch):
+    from .. import device_channel
+
+    sent = []
+
+    async def updater(device_id, text):
+        sent.append((device_id, text))
+
+    monkeypatch.setattr(device_channel, "websocket_updater", updater)
+    return sent
+
+
+async def test_core_ws_trigger_plain_for_old_firmware(owner, core_ws):
+    from ..device_channel import push_to_device
+
+    zapbox = await make_zapbox(owner)
+    await push_to_device(zapbox.id, "4-2000")
+    assert core_ws == [(zapbox.id, "4-2000")]
+
+
+async def test_core_ws_trigger_signed_with_increasing_counter(owner, core_ws):
+    import json
+
+    from ..crud import enable_signed_triggers
+    from ..device_channel import push_to_device, sign_trigger
+
+    zapbox = await make_zapbox(owner)
+    await enable_signed_triggers(zapbox.id)
+    await push_to_device(zapbox.id, "4-2000")
+    await push_to_device(zapbox.id, "4-2000-hello")
+    first, second = (json.loads(text) for _, text in core_ws)
+    assert first["event"] == "trigger" and first["data"] == "4-2000"
+    assert second["ctr"] == first["ctr"] + 1
+    for msg in (first, second):
+        assert msg["sig"] == sign_trigger(
+            zapbox.device_token, zapbox.id, msg["ctr"], msg["data"]
+        )
+    # Non-trigger events stay plain JSON
+    await push_to_device(zapbox.id, '{"event": "teach_ended"}')
+    assert core_ws[-1][1] == '{"event": "teach_ended"}'
+
+
+async def test_public_endpoint_enables_signing_only_with_token(client, owner):
+    from ..crud import get_trigger_state
+
+    zapbox = await make_zapbox(owner)
+    url = f"{API}/public/{zapbox.id}"
+    response = await client.get(url, headers={"X-Device-Token": "wrong"})
+    assert response.status_code == 200
+    assert response.json()["trigger_counter"] == 0
+    assert "device_token" not in response.text
+    assert (await get_trigger_state(zapbox.id))[1] is False
+    await client.get(url, headers=token_header(zapbox))
+    assert (await get_trigger_state(zapbox.id))[1] is True
+
+
+async def test_editor_save_does_not_reset_counter(app, client, owner, core_ws):
+    from ..crud import enable_signed_triggers, get_trigger_state
+    from ..device_channel import push_to_device
+
+    zapbox = await make_zapbox(owner)
+    await enable_signed_triggers(zapbox.id)
+    await push_to_device(zapbox.id, "4-2000")
+    as_user(app, owner)
+    await client.put(
+        f"{API}/{zapbox.id}",
+        json={
+            "title": "renamed",
+            "wallet": owner.wallets[0].id,
+            "currency": "sat",
+            "switches": [{"pin": 4, "amount": 1000, "duration": 2000}],
+        },
+    )
+    assert await get_trigger_state(zapbox.id) == (1, True)

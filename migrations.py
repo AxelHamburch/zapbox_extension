@@ -199,6 +199,22 @@ async def m010_device_token(db):
             "ALTER TABLE zapbox.switch ADD COLUMN ring_login_pin_required "
             "BOOLEAN NOT NULL DEFAULT FALSE"
         )
+    # Z6: relay triggers that fall back to the (unauthenticated) core
+    # WebSocket are signed with the device token and carry this counter.
+    # signed_triggers is set once the device proved it has the token (new
+    # firmware); older firmware keeps getting plain triggers. Both columns are
+    # deliberately not part of the ZapBox model, so saving the editor can never
+    # move the counter backwards.
+    if "trigger_counter" not in columns:
+        await db.execute(
+            f"ALTER TABLE zapbox.switch ADD COLUMN trigger_counter {db.big_int} "
+            "NOT NULL DEFAULT 0"
+        )
+    if "signed_triggers" not in columns:
+        await db.execute(
+            "ALTER TABLE zapbox.switch ADD COLUMN signed_triggers "
+            "BOOLEAN NOT NULL DEFAULT FALSE"
+        )
     rows = await db.fetchall(
         "SELECT id FROM zapbox.switch WHERE device_token IS NULL OR device_token = ''"
     )

@@ -17,6 +17,8 @@ from lnurl.types import LnurlPayMetadata
 from pydantic import BaseModel
 
 from .crud import (
+    enable_signed_triggers,
+    get_trigger_state,
     create_minipos_payment,
     create_switch_payment,
     create_zapbox,
@@ -28,7 +30,7 @@ from .crud import (
     new_device_token,
     update_zapbox,
 )
-from .device_auth import get_authenticated_zapbox
+from .device_auth import device_token_ok, get_authenticated_zapbox
 from .device_channel import push_to_device, spawn
 from .models import (
     CreateZapBox,
@@ -558,13 +560,23 @@ async def api_zapbox_update(
 @zapbox_api_router.get(
     "/public/{zapbox_id}", response_model=ZapBoxPublic
 )
-async def api_zapbox_get_public(zapbox_id: str) -> ZapBox:
+async def api_zapbox_get_public(
+    zapbox_id: str, x_device_token: str | None = Header(None)
+) -> ZapBoxPublic:
+    """Public switch config (labels, durations). Also fetched by the device at
+    boot: with a valid X-Device-Token the device proves it supports signed
+    core-WebSocket triggers (Z6), and gets the current trigger counter."""
     zapbox = await get_zapbox(zapbox_id)
     if not zapbox:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="ZapBox does not exist."
         )
-    return zapbox
+    if x_device_token and device_token_ok(zapbox, x_device_token):
+        await enable_signed_triggers(zapbox.id)
+    counter, _ = await get_trigger_state(zapbox.id)
+    return ZapBoxPublic(
+        title=zapbox.title, switches=zapbox.switches, trigger_counter=counter
+    )
 
 
 @zapbox_api_router.get("")
