@@ -251,18 +251,21 @@ Diese Tabelle nach jedem Release aktualisieren, damit beim nächsten Release der
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.6.6** *(aktuell)* | `b70c6c9` | `feat: release v2.6.6 – NFC error detail: label on its own line, wraps on the display` |
-| v2.6.5 *(Basis für v2.6.6 Release Notes)* | `604a015` | `feat: release v2.6.5 – specific error detail for unexpected NFC payment failures` |
+| **v2.7.0** *(aktuell)* | `8ceb8ca` | `feat: sign relay triggers on the core WebSocket fallback (Z6)` — Security-Release für LNbits 1.7.0, Geräte-Token (breaking) |
+| v2.6.6 *(Basis für v2.7.0 Release Notes)* | `b70c6c9` | `feat: release v2.6.6 – NFC error detail: label on its own line, wraps on the display` |
+| v2.6.5 | `604a015` | `feat: release v2.6.5 – specific error detail for unexpected NFC payment failures` |
 | v2.6.4 | `94a9a93` | `feat: release v2.6.4 – include GPIO pin number in successAction message` |
 | v2.6.3 | `43af813` | `feat: release v2.6.3 – prepend switch label to LUD-09 successAction message` |
 
-Für den nächsten Release: `git log b70c6c9..HEAD --oneline`
+Für den nächsten Release: `git log 8ceb8ca..HEAD --oneline`
 
 ### tagid_extension
 
 | Version | Tag-Commit | Commit-Message |
 |---------|-----------|----------------|
-| **v2.1.0** *(aktuell)* | `2796a87` | `chore: restore short_description for v2.1.0 entry` |
-| v2.0.0 *(Basis für v2.1.0 Release Notes)* | `b81c204` | — |
+| **v2.2.0** *(aktuell)* | `dfb9126` | `feat: v2.2.0 – port boltcards v1.2.1 security hardening, LNbits 1.7.0` |
+| v2.1.1 *(Basis für v2.2.0 Release Notes)* | `86b5d7d` | `release: prepare v2.1.1 (PIN edit fix) + add release guide` |
+| v2.1.0 | `2796a87` | `chore: restore short_description for v2.1.0 entry` |
+| v2.0.0 | `b81c204` | — |
 
-Für den nächsten Release: `git log 2796a87..HEAD --oneline`
+Für den nächsten Release: `git log dfb9126..HEAD --oneline`
