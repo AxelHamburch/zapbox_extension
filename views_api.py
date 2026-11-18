@@ -17,6 +17,7 @@ from lnurl.types import LnurlPayMetadata
 from pydantic import BaseModel
 
 from .crud import (
+    disable_signed_triggers,
     enable_signed_triggers,
     get_trigger_state,
     create_minipos_payment,
@@ -528,6 +529,9 @@ async def api_zapbox_regenerate_token(
         )
     zapbox.device_token = new_device_token()
     zapbox = await update_zapbox(zapbox)
+    # The device has not proven the new token yet: until it does, nothing can
+    # be sold to it (see device_can_deliver in views_lnurl.py).
+    await disable_signed_triggers(zapbox.id)
     # The old token must stop working now, not at the next reconnect: close the
     # channel that was opened with it.
     await close_device_channel(zapbox.id)

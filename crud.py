@@ -322,6 +322,16 @@ async def get_trigger_state(zapbox_id: str) -> tuple[int, bool]:
     return int(row["trigger_counter"] or 0), bool(row["signed_triggers"])
 
 
+async def disable_signed_triggers(zapbox_id: str) -> None:
+    """The device token changed: the device has not proven the new one yet.
+    It proves it again by opening the device channel or fetching the public
+    config with the new token."""
+    await db.execute(
+        "UPDATE zapbox.switch SET signed_triggers = FALSE WHERE id = :id",
+        {"id": zapbox_id},
+    )
+
+
 async def enable_signed_triggers(zapbox_id: str) -> None:
     """The device proved it knows its token (= firmware with signed trigger
     support): from now on core-WebSocket triggers are signed."""

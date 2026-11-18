@@ -663,3 +663,77 @@ async def test_regenerate_token_closes_open_device_channel(app, client, owner):
 
 async def test_close_device_channel_without_channel(owner):
     assert await close_device_channel("no-such-device") is False
+
+
+# --------------------------------------------------------------------------- #
+# v2.7.1 - never take a payment the device cannot act on
+# --------------------------------------------------------------------------- #
+
+
+def _core_ws(monkeypatch, connected):
+    monkeypatch.setattr(
+        views_lnurl,
+        "websocket_manager",
+        SimpleNamespace(has_connection=lambda _id: connected),
+    )
+
+
+async def test_no_invoice_when_core_ws_device_has_not_proven_token(
+    client, owner, monkeypatch
+):
+    """After "New token" the device is still on the core WebSocket but drops the
+    signed trigger: the payer must not be able to pay."""
+    from ..crud import disable_signed_triggers
+
+    _core_ws(monkeypatch, True)
+    zapbox = await make_zapbox(owner)
+    await disable_signed_triggers(zapbox.id)
+    response = await client.get(
+        f"{API}/lnurl/cb/{zapbox.id}/4", params={"amount": 1_000_000}
+    )
+    assert response.json()["status"] == "ERROR"
+    assert "No active ZapBox connections" in response.json()["reason"]
+
+
+async def test_invoice_when_core_ws_device_proved_token(client, owner, monkeypatch):
+    from ..crud import enable_signed_triggers
+
+    _core_ws(monkeypatch, True)
+    zapbox = await make_zapbox(owner)
+    await enable_signed_triggers(zapbox.id)
+    response = await client.get(
+        f"{API}/lnurl/cb/{zapbox.id}/4", params={"amount": 1_000_000}
+    )
+    assert "pr" in response.json(), response.text
+
+
+async def test_no_invoice_without_any_connection(client, owner, monkeypatch):
+    from ..crud import enable_signed_triggers
+
+    _core_ws(monkeypatch, False)
+    zapbox = await make_zapbox(owner)
+    await enable_signed_triggers(zapbox.id)
+    response = await client.get(
+        f"{API}/lnurl/cb/{zapbox.id}/4", params={"amount": 1_000_000}
+    )
+    assert response.json()["status"] == "ERROR"
+
+
+async def test_regenerate_token_requires_device_to_prove_new_token(
+    app, client, owner
+):
+    from ..crud import enable_signed_triggers, get_trigger_state
+
+    zapbox = await make_zapbox(owner)
+    await enable_signed_triggers(zapbox.id)
+    as_user(app, owner)
+    response = await client.put(f"{API}/{zapbox.id}/device_token")
+    new_token = response.json()["device_token"]
+    assert (await get_trigger_state(zapbox.id))[1] is False
+    # old token no longer proves anything, the new one does
+    await client.get(
+        f"{API}/public/{zapbox.id}", headers={"X-Device-Token": zapbox.device_token}
+    )
+    assert (await get_trigger_state(zapbox.id))[1] is False
+    await client.get(f"{API}/public/{zapbox.id}", headers={"X-Device-Token": new_token})
+    assert (await get_trigger_state(zapbox.id))[1] is True

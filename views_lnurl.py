@@ -17,11 +17,30 @@ from lnurl import (
 )
 from pydantic import TypeAdapter, ValidationError
 
-from .crud import create_switch_payment, get_zapbox
+from .crud import create_switch_payment, get_trigger_state, get_zapbox
 from .device_channel import has_device_channel
 from .pricing import amount_accepted, max_sendable_msat, switch_price_msat
 
 zapbox_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
+
+
+async def device_can_deliver(zapbox_id: str) -> bool:
+    """True if a paid trigger will reach a device that accepts it.
+
+    - Open device channel: the device proved its token when it connected.
+    - Core WebSocket only (fallback while the channel is down, or single
+      connection mode): only if the device proved the *current* token. The
+      trigger there is signed with it, and a device with another token (after
+      "New token", before the new device string is flashed) silently drops it:
+      the payer would pay and get nothing. Devices that never proved a token
+      cannot be told apart from stale ones and are not sold to either.
+    """
+    if has_device_channel(zapbox_id):
+        return True
+    if not websocket_manager.has_connection(zapbox_id):
+        return False
+    _, proved_token = await get_trigger_state(zapbox_id)
+    return proved_token
 
 # Both routes are called by Lightning wallets. The opt-in lets wallets on the
 # same LNbits instance pay a ZapBox (LNbits >= 1.7.0 blocks self-requests
@@ -112,14 +131,8 @@ async def lnurl_callback(
             reason=f"Amount must be between {price_msat} and {max_msat} msat."
         )
 
-    # A device is reachable via the core WebSocket OR the persistent device
-    # channel (views_ws.py). Newer firmware deliberately keeps only the device
-    # channel open — NAT-challenged routers cannot hold two long-lived
-    # connections to the same host, so the device runs exactly one.
-    if not (
-        websocket_manager.has_connection(switch_id)
-        or has_device_channel(switch_id)
-    ):
+    # Never take a payment the device cannot act on (v2.7.1).
+    if not await device_can_deliver(switch_id):
         return LnurlErrorResponse(reason="No active ZapBox connections.")
 
     memo = f"{switch.title} (pin: {pin})"

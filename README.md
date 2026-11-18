@@ -14,9 +14,11 @@ Extension manifest source for LNbits: [https://raw.githubusercontent.com/AxelHam
 
 ---
 
-## v2.7.1 – "New token" now disconnects the device at once
+## v2.7.1 – "New token" disconnects the device at once, no payment without delivery
 
-The device token was only checked when the device channel was opened. After **New token** an already connected ZapBox therefore kept working with the old token until it reconnected (for example after a restart). The open channel is now closed immediately with the event `device_token_invalid` (close code 4401); the firmware shows "Token invalid: update device string". No migration, no firmware change.
+The device token was only checked when the device channel was opened. After **New token** an already connected ZapBox therefore kept working with the old token until it reconnected (for example after a restart). The open channel is now closed immediately with the event `device_token_invalid` (close code 4401); the firmware shows "Token invalid: update device string".
+
+A ZapBox that still holds the old token also drops the relay trigger sent over the core WebSocket, because it is signed with the new token. The LNURL callback therefore no longer issues an invoice in that state: a payer could have paid without getting anything. An invoice is now only issued if the device channel is open, or if the device is on the core WebSocket **and** has proven the current token (device channel or public config fetched with it). After **New token** that proof is reset until the device has the new device string. No migration, no firmware change.
 
 ---
 
