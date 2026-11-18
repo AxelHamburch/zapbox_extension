@@ -78,6 +78,8 @@ git push
 
 In LNbits: uninstall the extension → reinstall it (so the new static files are loaded).
 
+**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser keeps using the old JavaScript together with the new template. Typical symptoms: the page freezes, or the console shows `… is not a function`. This matters most for a re-release under the same version and for LNbits' automatic extension updates, which run without a restart.
+
 ---
 
 ## B) New Release (new version, e.g. v2.1.0)
@@ -165,6 +167,8 @@ git push
 ### 7. Reinstall the extension in LNbits
 
 In LNbits: uninstall the extension → reinstall it (so the new static files are loaded).
+
+**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser keeps using the old JavaScript together with the new template. Typical symptoms: the page freezes, or the console shows `… is not a function`. This matters most for a re-release under the same version and for LNbits' automatic extension updates, which run without a restart.
 
 ---
 
