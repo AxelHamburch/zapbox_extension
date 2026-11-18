@@ -22,6 +22,8 @@ from fastapi import WebSocket
 from lnbits.core.services import websocket_updater
 from loguru import logger
 
+from .device_auth import TOKEN_INVALID_EVENT, WS_CLOSE_INVALID_TOKEN
+
 # device_id → (websocket, per-connection send lock)
 _channels: dict[str, tuple[WebSocket, asyncio.Lock]] = {}
 
@@ -38,6 +40,31 @@ def unregister_channel(device_id: str, websocket: WebSocket) -> None:
     entry = _channels.get(device_id)
     if entry and entry[0] is websocket:
         _channels.pop(device_id, None)
+
+
+async def close_device_channel(device_id: str) -> bool:
+    """Drop the open device channel because its token is no longer valid.
+
+    The token is only checked when a channel is opened, so after "New token" an
+    already connected device would keep working with the old one. The device
+    gets the invalid-token event and close code 4401 (same as a rejected
+    handshake) and then shows "Token invalid". Returns True if a channel was
+    open.
+    """
+    entry = _channels.get(device_id)
+    if not entry:
+        return False
+    websocket, lock = entry
+    unregister_channel(device_id, websocket)
+    try:
+        async with lock:
+            await websocket.send_text(json.dumps({"event": TOKEN_INVALID_EVENT}))
+            await websocket.close(
+                code=WS_CLOSE_INVALID_TOKEN, reason="Device token invalid"
+            )
+    except Exception as exc:
+        logger.warning(f"ZapBox: closing device channel {device_id} failed: {exc}")
+    return True
 
 
 def has_device_channel(device_id: str) -> bool:

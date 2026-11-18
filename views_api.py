@@ -31,7 +31,7 @@ from .crud import (
     update_zapbox,
 )
 from .device_auth import device_token_ok, get_authenticated_zapbox
-from .device_channel import push_to_device, spawn
+from .device_channel import close_device_channel, push_to_device, spawn
 from .models import (
     CreateZapBox,
     MiniPosInvoiceRequest,
@@ -527,7 +527,11 @@ async def api_zapbox_regenerate_token(
             detail="You do not have permission to update this ZapBox.",
         )
     zapbox.device_token = new_device_token()
-    return await update_zapbox(zapbox)
+    zapbox = await update_zapbox(zapbox)
+    # The old token must stop working now, not at the next reconnect: close the
+    # channel that was opened with it.
+    await close_device_channel(zapbox.id)
+    return zapbox
 
 
 @zapbox_api_router.put("/{zapbox_id}")

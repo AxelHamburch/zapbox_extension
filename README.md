@@ -14,6 +14,12 @@ Extension manifest source for LNbits: [https://raw.githubusercontent.com/AxelHam
 
 ---
 
+## v2.7.1 – "New token" now disconnects the device at once
+
+The device token was only checked when the device channel was opened. After **New token** an already connected ZapBox therefore kept working with the old token until it reconnected (for example after a restart). The open channel is now closed immediately with the event `device_token_invalid` (close code 4401); the firmware shows "Token invalid: update device string". No migration, no firmware change.
+
+---
+
 ## v2.7.0 – Security update for LNbits 1.7.0 (breaking)
 
 Requires **LNbits 1.7.0** or newer and **ZapBox firmware with device token support**.

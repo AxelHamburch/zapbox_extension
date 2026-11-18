@@ -1,5 +1,6 @@
 """Security fixes of v2.7.0 (see 00/lnbits/v1.7.x_update.md, Z1-Z9)."""
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -16,6 +17,12 @@ from ..crud import (
     get_zapbox,
 )
 from ..device_auth import device_token_ok
+from ..device_channel import (
+    close_device_channel,
+    has_device_channel,
+    register_channel,
+    unregister_channel,
+)
 from ..models import CreateZapBox, MiniPosPayment
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -631,3 +638,28 @@ async def test_editor_save_does_not_reset_counter(app, client, owner, core_ws):
         },
     )
     assert await get_trigger_state(zapbox.id) == (1, True)
+
+
+async def test_regenerate_token_closes_open_device_channel(app, client, owner):
+    """The token is only checked at handshake: "New token" must drop the open
+    channel, otherwise the old token keeps working until the device reconnects."""
+    zapbox = await make_zapbox(owner)
+    websocket = SimpleNamespace(
+        send_text=AsyncMock(), close=AsyncMock()
+    )
+    register_channel(zapbox.id, websocket)
+    try:
+        as_user(app, owner)
+        response = await client.put(f"{API}/{zapbox.id}/device_token")
+        assert response.status_code == 200
+        assert not has_device_channel(zapbox.id)
+        sent = websocket.send_text.await_args.args[0]
+        assert json.loads(sent) == {"event": "device_token_invalid"}
+        websocket.close.assert_awaited_once()
+        assert websocket.close.await_args.kwargs["code"] == 4401
+    finally:
+        unregister_channel(zapbox.id, websocket)
+
+
+async def test_close_device_channel_without_channel(owner):
+    assert await close_device_channel("no-such-device") is False
