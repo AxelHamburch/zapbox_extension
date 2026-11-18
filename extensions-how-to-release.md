@@ -78,7 +78,7 @@ git push
 
 In LNbits: uninstall the extension → reinstall it (so the new static files are loaded).
 
-**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser keeps using the old JavaScript together with the new template. Typical symptoms: the page freezes, or the console shows `… is not a function`. This matters most for a re-release under the same version and for LNbits' automatic extension updates, which run without a restart.
+**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser may keep using the old JavaScript (for example from an open tab or its cache) together with the new template. LNbits sends no cache headers for extension files, so this is not guaranteed to happen, but it is likely right after a re-release under the same version. Typical symptoms: the page freezes, or the console shows `… is not a function`. A restart is the safe way after a re-release under the same version or after an automatic update.
 
 ---
 
@@ -168,7 +168,7 @@ git push
 
 In LNbits: uninstall the extension → reinstall it (so the new static files are loaded).
 
-**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser keeps using the old JavaScript together with the new template. Typical symptoms: the page freezes, or the console shows `… is not a function`. This matters most for a re-release under the same version and for LNbits' automatic extension updates, which run without a restart.
+**Then restart the LNbits server (Admin → Restart server) and hard-reload the page (`Ctrl+Shift+R`).** LNbits appends the server start time to every static file URL (`?v=<start time>`). Without a restart the URL stays the same, and the browser may keep using the old JavaScript (for example from an open tab or its cache) together with the new template. LNbits sends no cache headers for extension files, so this is not guaranteed to happen, but it is likely right after a re-release under the same version. Typical symptoms: the page freezes, or the console shows `… is not a function`. A restart is the safe way after a re-release under the same version or after an automatic update.
 
 ---
 
