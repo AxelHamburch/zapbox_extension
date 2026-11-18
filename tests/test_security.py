@@ -692,7 +692,7 @@ async def test_no_invoice_when_core_ws_device_has_not_proven_token(
         f"{API}/lnurl/cb/{zapbox.id}/4", params={"amount": 1_000_000}
     )
     assert response.json()["status"] == "ERROR"
-    assert "No active ZapBox connections" in response.json()["reason"]
+    assert response.json()["reason"] == views_lnurl.TOKEN_NOT_PROVEN_REASON
 
 
 async def test_invoice_when_core_ws_device_proved_token(client, owner, monkeypatch):
@@ -717,6 +717,7 @@ async def test_no_invoice_without_any_connection(client, owner, monkeypatch):
         f"{API}/lnurl/cb/{zapbox.id}/4", params={"amount": 1_000_000}
     )
     assert response.json()["status"] == "ERROR"
+    assert response.json()["reason"] == "No active ZapBox connections."
 
 
 async def test_regenerate_token_requires_device_to_prove_new_token(

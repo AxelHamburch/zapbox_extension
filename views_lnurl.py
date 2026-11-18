@@ -15,6 +15,7 @@ from lnurl import (
     MessageAction,
     MilliSatoshi,
 )
+from loguru import logger
 from pydantic import TypeAdapter, ValidationError
 
 from .crud import create_switch_payment, get_trigger_state, get_zapbox
@@ -24,8 +25,15 @@ from .pricing import amount_accepted, max_sendable_msat, switch_price_msat
 zapbox_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 
 
-async def device_can_deliver(zapbox_id: str) -> bool:
-    """True if a paid trigger will reach a device that accepts it.
+NO_CONNECTION_REASON = "No active ZapBox connections."
+TOKEN_NOT_PROVEN_REASON = (
+    "ZapBox device token is not valid. The owner must update the device string."
+)
+
+
+async def delivery_problem(zapbox_id: str) -> str | None:
+    """None if a paid trigger will reach a device that accepts it, otherwise
+    the reason shown to the payer's wallet (and logged).
 
     - Open device channel: the device proved its token when it connected.
     - Core WebSocket only (fallback while the channel is down, or single
@@ -36,11 +44,19 @@ async def device_can_deliver(zapbox_id: str) -> bool:
       cannot be told apart from stale ones and are not sold to either.
     """
     if has_device_channel(zapbox_id):
-        return True
+        return None
     if not websocket_manager.has_connection(zapbox_id):
-        return False
+        logger.warning(f"ZapBox {zapbox_id}: no invoice, device is not connected")
+        return NO_CONNECTION_REASON
     _, proved_token = await get_trigger_state(zapbox_id)
-    return proved_token
+    if not proved_token:
+        logger.warning(
+            f"ZapBox {zapbox_id}: no invoice, device is connected but has not "
+            "proven the current device token (token renewed? new device string "
+            "not flashed yet, or old firmware)"
+        )
+        return TOKEN_NOT_PROVEN_REASON
+    return None
 
 # Both routes are called by Lightning wallets. The opt-in lets wallets on the
 # same LNbits instance pay a ZapBox (LNbits >= 1.7.0 blocks self-requests
@@ -132,8 +148,9 @@ async def lnurl_callback(
         )
 
     # Never take a payment the device cannot act on (v2.7.1).
-    if not await device_can_deliver(switch_id):
-        return LnurlErrorResponse(reason="No active ZapBox connections.")
+    problem = await delivery_problem(switch_id)
+    if problem:
+        return LnurlErrorResponse(reason=problem)
 
     memo = f"{switch.title} (pin: {pin})"
     if comment:
